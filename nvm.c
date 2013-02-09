@@ -11,9 +11,10 @@
  */
 
 /*
- * This the main (although files name may say something different) file that implements the Virtual Machine.
+ * This the main file that implements the Virtual Machine.
  *
  * This VM is stack based.
+ *
  */
 
 #include <stdio.h>
@@ -29,36 +30,7 @@ static int stack[STACK_SIZE];
 /* number of values on the stack */
 static unsigned stack_size = 0;
 /* program counter, used only in the `debug` function */
-static unsigned pc = 1;
-
-int main(void)
-{
-  void *parser = ParseAlloc(malloc);
-
-  /* input: (2 + 2) * 2 / 4 * (10 + 4) + 9 */
-  Parse(parser, LPAREN, 0);
-  Parse(parser, NUMBER, 2);
-  Parse(parser, PLUS, 0);
-  Parse(parser, NUMBER, 2);
-  Parse(parser, RPAREN, 0);
-  Parse(parser, TIMES, 0);
-  Parse(parser, NUMBER, 2);
-  Parse(parser, DIVIDE, 0);
-  Parse(parser, NUMBER, 4);
-  Parse(parser, TIMES, 0);
-  Parse(parser, LPAREN, 0);
-  Parse(parser, NUMBER, 10);
-  Parse(parser, PLUS, 0);
-  Parse(parser, NUMBER, 4);
-  Parse(parser, RPAREN, 0);
-  Parse(parser, PLUS, 0);
-  Parse(parser, NUMBER, 9);
-  Parse(parser, 0, 0);
-
-  ParseFree(parser, free);
-
-  return 0;
-}
+static unsigned pc = 0;
 
 void push(int value)
 {
@@ -94,28 +66,28 @@ void binop(unsigned op){
   int res;
 
   switch (op){
-    case BIN_ADD:
+    case BINARY_ADD:
       res = a + b;
 #ifdef DEBUG
-      debug("add %d %d", a, b);
+      debug("add");
 #endif
       break;
-    case BIN_SUB:
+    case BINARY_SUB:
       res = a - b;
 #ifdef DEBUG
-      debug("sub %d %d", a, b);
+      debug("sub");
 #endif
       break;
-    case BIN_MUL:
+    case BINARY_MUL:
       res = a * b;
 #ifdef DEBUG
-      debug("mul %d %d", a, b);
+      debug("mul");
 #endif
       break;
-    case BIN_DIV:
+    case BINARY_DIV:
       res = a / b;
 #ifdef DEBUG
-      debug("div %d %d", a, b);
+      debug("div");
 #endif
       break;
   }
@@ -147,6 +119,35 @@ void debug(const char *msg, ...)
   vprintf(msg, ap);
   printf("\n");
   va_end(ap);
+}
+
+int main(void)
+{
+  void *parser = ParseAlloc(malloc);
+
+  /* input: (2 + 2) * 2 / 4 * (10 + 4) + 9 */
+  Parse(parser, LPAREN, 0);
+  Parse(parser, NUMBER, 2);
+  Parse(parser, PLUS, 0);
+  Parse(parser, NUMBER, 2);
+  Parse(parser, RPAREN, 0);
+  Parse(parser, TIMES, 0);
+  Parse(parser, NUMBER, 2);
+  Parse(parser, DIVIDE, 0);
+  Parse(parser, NUMBER, 4);
+  Parse(parser, TIMES, 0);
+  Parse(parser, LPAREN, 0);
+  Parse(parser, NUMBER, 10);
+  Parse(parser, PLUS, 0);
+  Parse(parser, NUMBER, 4);
+  Parse(parser, RPAREN, 0);
+  Parse(parser, PLUS, 0);
+  Parse(parser, NUMBER, 9);
+  Parse(parser, 0, 0);
+
+  ParseFree(parser, free);
+
+  return 0;
 }
 
 /*

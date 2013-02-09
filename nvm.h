@@ -22,10 +22,10 @@
 /*
  * List of opcodes.
  */
-#define BIN_ADD 0x00
-#define BIN_SUB 0x01
-#define BIN_MUL 0x02
-#define BIN_DIV 0x03
+#define BINARY_ADD 0x00
+#define BINARY_SUB 0x01
+#define BINARY_MUL 0x02
+#define BINARY_DIV 0x03
 
 /*
  * name:        push

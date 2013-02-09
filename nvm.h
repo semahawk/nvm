@@ -9,16 +9,6 @@
 #include <stdbool.h>
 
 /*
- * Type of a binary operation.
- */
-typedef enum {
-  ADD,
-  SUB,
-  MUL,
-  DIV
-} BINOP;
-
-/*
  * Maximum size of the stack. Probably I should make it extendable in case of
  * overflow.
  */
@@ -28,6 +18,14 @@ typedef enum {
  * Used for debugging purposes.
  */
 #define DEBUG
+
+/*
+ * List of opcodes.
+ */
+#define BIN_ADD 0x00
+#define BIN_SUB 0x01
+#define BIN_MUL 0x02
+#define BIN_DIV 0x03
 
 /*
  * name:        push
@@ -46,7 +44,7 @@ int pop(void);
  * description: pops a value twice, and performs a binary <operation> on those
  *              operands, and pushes the result
  */
-void binop(BINOP operation);
+void binop(unsigned operation);
 
 /*
  * name:        print_stack

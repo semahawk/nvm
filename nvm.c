@@ -88,31 +88,31 @@ int pop(void)
   return value;
 }
 
-void binop(BINOP op){
+void binop(unsigned op){
   int b = pop();
   int a = pop();
   int res;
 
   switch (op){
-    case ADD:
+    case BIN_ADD:
       res = a + b;
 #ifdef DEBUG
       debug("add %d %d", a, b);
 #endif
       break;
-    case SUB:
+    case BIN_SUB:
       res = a - b;
 #ifdef DEBUG
       debug("sub %d %d", a, b);
 #endif
       break;
-    case MUL:
+    case BIN_MUL:
       res = a * b;
 #ifdef DEBUG
       debug("mul %d %d", a, b);
 #endif
       break;
-    case DIV:
+    case BIN_DIV:
       res = a / b;
 #ifdef DEBUG
       debug("div %d %d", a, b);

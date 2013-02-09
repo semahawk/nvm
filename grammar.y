@@ -35,12 +35,12 @@ source ::= expr .
   print_stack();
 }
 
-expr(res) ::= expr(left) PLUS   expr(right). { binop(ADD); res = left + right; }
-expr(res) ::= expr(left) MINUS  expr(right). { binop(SUB); res = left - right; }
-expr(res) ::= expr(left) TIMES  expr(right). { binop(MUL); res = left * right; }
+expr(res) ::= expr(left) PLUS   expr(right). { binop(BIN_ADD); res = left + right; }
+expr(res) ::= expr(left) MINUS  expr(right). { binop(BIN_SUB); res = left - right; }
+expr(res) ::= expr(left) TIMES  expr(right). { binop(BIN_MUL); res = left * right; }
 /* normally there would be some 'zero division' checking, but screw, the tokens
  * are hard-coded */
-expr(res) ::= expr(left) DIVIDE expr(right). { binop(DIV); res = left / right; }
+expr(res) ::= expr(left) DIVIDE expr(right). { binop(BIN_DIV); res = left / right; }
 expr(res) ::= NUMBER(number).                { push(number); res = number; }
 expr(res) ::= LPAREN expr(inside) RPAREN.    { res = inside; }
 

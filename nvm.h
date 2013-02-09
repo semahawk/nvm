@@ -62,6 +62,12 @@ void print_stack(void);
  */
 void debug(const char *message, ...);
 
+/*
+ * name:        is_empty
+ * description: return `true` if the stack is empty, otherwise `false`
+ */
+bool is_empty(void);
+
 /* Lemon stuff */
 void *ParseAlloc(void *(*)(size_t));
 void  Parse(void *, int, int);

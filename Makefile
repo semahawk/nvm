@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -W -Wall -std=c99
 OBJS = nvm.o grammar.o
 
-.PHONY: all clean grammar clean distclean
+.PHONY: all grammar clean distclean
 
 all: lemon grammar nvm
 

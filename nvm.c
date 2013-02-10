@@ -38,6 +38,7 @@ static char separator = ';';
 
 void push(int value)
 {
+  /* {{{ push body */
   if (stack_size >= STACK_SIZE){
     /* TODO: extend the stack */
     fprintf(stderr, "stack overflow!\n");
@@ -57,10 +58,12 @@ void push(int value)
   pc++;
 
   stack[stack_size++] = value;
+  /* }}} */
 }
 
 int pop(void)
 {
+  /* {{{ pop body */
   int value = stack[--stack_size];
   unsigned op = POP;
 
@@ -75,9 +78,11 @@ int pop(void)
   pc++;
 
   return value;
+  /* }}} */
 }
 
 void binop(unsigned op){
+  /* {{{ binop body */
   int b = pop();
   int a = pop();
   int res;
@@ -116,23 +121,29 @@ void binop(unsigned op){
   pc++;
 
   push(res);
+  /* }}} */
 }
 
 bool is_empty(void)
 {
+  /* {{{ is_empty body */
   return stack_size == 0 ? true : false;
+  /* }}} */
 }
 
 void print_stack(void)
 {
+  /* {{{ print_stack body */
   unsigned i;
   for (i = 0; i < stack_size; i++){
     printf("item on stack: %d\n", stack[i]);
   }
+  /* }}} */
 }
 
 void debug(const char *msg, ...)
 {
+  /* {{{ debug body */
   va_list ap;
 
   printf("%03d: ", pc);
@@ -140,10 +151,12 @@ void debug(const char *msg, ...)
   vprintf(msg, ap);
   printf("\n");
   va_end(ap);
+  /* }}} */
 }
 
 nvm_t *nvm_init(const char *filename)
 {
+  /* {{{ nvm_init body */
   nvm_t *vm = malloc(sizeof(nvm_t));
 
   if (!vm){
@@ -161,12 +174,15 @@ nvm_t *nvm_init(const char *filename)
   fwrite(&patch, sizeof patch, 1, file_p);
 
   return vm;
+  /* }}} */
 }
 
 void nvm_destroy(nvm_t *vm)
 {
+  /* {{{ nvm_destroy body */
   fclose(file_p);
   free(vm);
+  /* }}} */
 }
 
 /*

@@ -33,6 +33,8 @@ static unsigned stack_size = 0;
 static unsigned pc = 0;
 /* file containing the bytecode */
 static FILE *file_p;
+/* a separator of commands */
+static char separator = ';';
 
 void push(int value)
 {
@@ -47,6 +49,7 @@ void push(int value)
   /* write to the file */
   fwrite(&op, sizeof op, 1, file_p);
   fwrite(&value, sizeof value, 1, file_p);
+  fwrite(&separator, 1, 1, file_p);
 
 #ifdef DEBUG
   debug("push %d", value);
@@ -64,6 +67,7 @@ int pop(void)
   /* write to the file */
   fwrite(&op, sizeof op, 1, file_p);
   fwrite(&value, sizeof value, 1, file_p);
+  fwrite(&separator, 1, 1, file_p);
 
 #ifdef DEBUG
   debug("pop %d", value);
@@ -80,6 +84,7 @@ void binop(unsigned op){
 
   /* write to the file */
   fwrite(&op, sizeof(op), 1, file_p);
+  fwrite(&separator, 1, 1, file_p);
 
   switch (op){
     case BINARY_ADD:
@@ -137,10 +142,42 @@ void debug(const char *msg, ...)
   va_end(ap);
 }
 
+nvm_t *nvm_init(const char *filename)
+{
+  nvm_t *vm = malloc(sizeof(nvm_t));
+
+  if (!vm){
+    return NULL;
+  }
+
+  file_p = fopen(filename, "wb");
+
+  int major = NVM_VERSION_MAJOR;
+  int minor = NVM_VERSION_MINOR;
+  int patch = NVM_VERSION_PATCH;
+
+  fwrite(&major, sizeof major, 1, file_p);
+  fwrite(&minor, sizeof minor, 1, file_p);
+  fwrite(&patch, sizeof patch, 1, file_p);
+
+  return vm;
+}
+
+void nvm_destroy(nvm_t *vm)
+{
+  fclose(file_p);
+  free(vm);
+}
+
 int main(void)
 {
   void *parser = ParseAlloc(malloc);
-  file_p = fopen("bytecode.nc", "wb");
+  nvm_t *vm = nvm_init("bytecode.nc");
+
+  if (!vm){
+    fprintf(stderr, "error :C\n");
+    return 1;
+  }
 
   /* input: (2 + 2) * 2 / 4 * (10 + 4) + 9 */
   Parse(parser, LPAREN, 0);
@@ -163,7 +200,7 @@ int main(void)
   Parse(parser, 0, 0);
 
   ParseFree(parser, free);
-  fclose(file_p);
+  nvm_destroy(vm);
 
   return 0;
 }

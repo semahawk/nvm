@@ -9,6 +9,13 @@
 #include <stdbool.h>
 
 /*
+ * Obviously.
+ */
+#define NVM_VERSION_PATCH 1
+#define NVM_VERSION_MINOR 2
+#define NVM_VERSION_MAJOR 3
+
+/*
  * Maximum size of the stack. Probably I should make it extendable in case of
  * overflow.
  */
@@ -28,6 +35,13 @@
 #define BINARY_SUB 0x03
 #define BINARY_MUL 0x04
 #define BINARY_DIV 0x05
+
+/*
+ * The main type for NVM.
+ */
+typedef struct {
+  /* TODO: populate! */
+} nvm_t;
 
 /*
  * name:        push

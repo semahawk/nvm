@@ -22,10 +22,12 @@
 /*
  * List of opcodes.
  */
-#define BINARY_ADD 0x00
-#define BINARY_SUB 0x01
-#define BINARY_MUL 0x02
-#define BINARY_DIV 0x03
+#define PUSH       0x00
+#define POP        0x01
+#define BINARY_ADD 0x02
+#define BINARY_SUB 0x03
+#define BINARY_MUL 0x04
+#define BINARY_DIV 0x05
 
 /*
  * name:        push
@@ -58,9 +60,15 @@ void print_stack(void);
  *
  *              <number>: <message><newline>
  *
- *              where <number> is current action number (variable `pc` in vm.c)
+ *              where <number> is current action number (variable `pc` in nvm.c)
  */
 void debug(const char *message, ...);
+
+/*
+ * name:        write_line
+ * description: writes a line to `file_p` in a binary format (hopefully)
+ */
+void write_line(unsigned operation);
 
 /*
  * name:        is_empty

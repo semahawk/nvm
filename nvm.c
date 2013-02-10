@@ -4,14 +4,14 @@
  *
  * Created at:  02/09/2013 12:26:00 PM
  *
- * Author:  Szymon Urbas <szymon.urbas@aol.com>
+ * Author:  Szymon Urbaś <szymon.urbas@aol.com>
  *
  * License: the MIT license
  *
  */
 
 /*
- * This the main file that implements the Virtual Machine.
+ * This is the main file that implements the Virtual Machine.
  *
  * This VM is stack based.
  *
@@ -31,6 +31,8 @@ static int stack[STACK_SIZE];
 static unsigned stack_size = 0;
 /* program counter, used only in the `debug` function */
 static unsigned pc = 0;
+/* file containing the bytecode */
+static FILE *file_p;
 
 void push(int value)
 {
@@ -39,6 +41,12 @@ void push(int value)
     fprintf(stderr, "stack overflow!\n");
     exit(1);
   }
+
+  unsigned op = PUSH;
+
+  /* write to the file */
+  fwrite(&op, sizeof op, 1, file_p);
+  fwrite(&value, sizeof value, 1, file_p);
 
 #ifdef DEBUG
   debug("push %d", value);
@@ -51,6 +59,11 @@ void push(int value)
 int pop(void)
 {
   int value = stack[--stack_size];
+  unsigned op = POP;
+
+  /* write to the file */
+  fwrite(&op, sizeof op, 1, file_p);
+  fwrite(&value, sizeof value, 1, file_p);
 
 #ifdef DEBUG
   debug("pop %d", value);
@@ -64,6 +77,9 @@ void binop(unsigned op){
   int b = pop();
   int a = pop();
   int res;
+
+  /* write to the file */
+  fwrite(&op, sizeof(op), 1, file_p);
 
   switch (op){
     case BINARY_ADD:
@@ -124,6 +140,7 @@ void debug(const char *msg, ...)
 int main(void)
 {
   void *parser = ParseAlloc(malloc);
+  file_p = fopen("bytecode.nc", "wb");
 
   /* input: (2 + 2) * 2 / 4 * (10 + 4) + 9 */
   Parse(parser, LPAREN, 0);
@@ -146,6 +163,7 @@ int main(void)
   Parse(parser, 0, 0);
 
   ParseFree(parser, free);
+  fclose(file_p);
 
   return 0;
 }

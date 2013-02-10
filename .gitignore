@@ -1,6 +1,8 @@
 nvm
 lemon
 
+bytecode.nc
+
 *.o
 
 grammar.c

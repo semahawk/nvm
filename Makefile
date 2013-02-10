@@ -21,6 +21,7 @@ nvm: $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) -o nvm
 
 nvm.o: nvm.c nvm.h
+	$(CC) $(CFLAGS) -c nvm.c
 
 clean:
 	rm -f *.o

@@ -90,6 +90,23 @@ void write_line(unsigned operation);
  */
 bool is_empty(void);
 
+/*
+ * name:        nvm_init
+ * description: creates a new `nvm_t` object, and return pointer to it
+ * parameter:   filename - name of a file into which the bytecode will be
+ *              printed and from which the bytecode will be extracted in order
+ *              to execute the operations.
+ * return:      pointer to a new malloced object or NULL if malloc failed
+ */
+nvm_t *nvm_init(const char *filename);
+
+/*
+ * name:        nvm_destroy
+ * description: cleans up after everything (which includes fclosing the file and
+ *              freeing the malloced pointer)
+ */
+void nvm_destroy(nvm_t *virtual_machine);
+
 /* Lemon stuff */
 void *ParseAlloc(void *(*)(size_t));
 void  Parse(void *, int, int);

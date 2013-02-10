@@ -1,10 +1,10 @@
 CC = gcc
 CFLAGS = -W -Wall -std=c99
-OBJS = nvm.o grammar.o
+OBJS = example.o nvm.o grammar.o
 
 .PHONY: all grammar clean distclean
 
-all: lemon grammar nvm
+all: lemon grammar example
 
 lemon: lemon.o
 	$(CC) $(CFLAGS) lemon.o -o lemon
@@ -17,8 +17,11 @@ grammar.o: lemon grammar.y
 	./lemon -q grammar.y
 	$(CC) $(CFLAGS) -c grammar.c
 
-nvm: $(OBJS)
-	$(CC) $(CFLAGS) $(OBJS) -o nvm
+example: $(OBJS)
+	$(CC) $(CFLAGS) $(OBJS) -o example
+
+example.o: example.c
+	$(CC) $(CFLAGS) -c example.c
 
 nvm.o: nvm.c nvm.h
 	$(CC) $(CFLAGS) -c nvm.c

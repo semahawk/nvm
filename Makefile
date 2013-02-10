@@ -32,6 +32,6 @@ clean:
 	rm -f grammar.h
 
 distclean: clean
-	rm -f nvm
+	rm -f example
 	rm -f lemon
 

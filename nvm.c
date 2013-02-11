@@ -20,7 +20,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#include <assert.h>
+#include <sys/stat.h>
 
 #include "nvm.h"
 #include "grammar.h"
@@ -33,8 +33,6 @@ static unsigned stack_size = 0;
 static unsigned pc = 0;
 /* file containing the bytecode */
 static FILE *file_p;
-/* a separator of commands */
-static char separator = ';';
 
 void push(int value)
 {
@@ -45,12 +43,11 @@ void push(int value)
     exit(1);
   }
 
-  unsigned op = PUSH;
+  BYTE op = PUSH;
 
   /* write to the file */
   fwrite(&op, sizeof op, 1, file_p);
   fwrite(&value, sizeof value, 1, file_p);
-  fwrite(&separator, 1, 1, file_p);
 
 #ifdef DEBUG
   debug("push %d", value);
@@ -65,12 +62,11 @@ int pop(void)
 {
   /* {{{ pop body */
   int value = stack[--stack_size];
-  unsigned op = POP;
+  BYTE op = POP;
 
   /* write to the file */
   fwrite(&op, sizeof op, 1, file_p);
   fwrite(&value, sizeof value, 1, file_p);
-  fwrite(&separator, 1, 1, file_p);
 
 #ifdef DEBUG
   debug("pop %d", value);
@@ -81,7 +77,7 @@ int pop(void)
   /* }}} */
 }
 
-void binop(unsigned op){
+void binop(BYTE op){
   /* {{{ binop body */
   int b = pop();
   int a = pop();
@@ -89,7 +85,6 @@ void binop(unsigned op){
 
   /* write to the file */
   fwrite(&op, sizeof(op), 1, file_p);
-  fwrite(&separator, 1, 1, file_p);
 
   switch (op){
     case BINARY_ADD:
@@ -165,9 +160,9 @@ nvm_t *nvm_init(const char *filename)
 
   file_p = fopen(filename, "wb");
 
-  int major = NVM_VERSION_MAJOR;
-  int minor = NVM_VERSION_MINOR;
-  int patch = NVM_VERSION_PATCH;
+  BYTE major = NVM_VERSION_MAJOR;
+  BYTE minor = NVM_VERSION_MINOR;
+  BYTE patch = NVM_VERSION_PATCH;
 
   fwrite(&major, sizeof major, 1, file_p);
   fwrite(&minor, sizeof minor, 1, file_p);
@@ -180,12 +175,86 @@ nvm_t *nvm_init(const char *filename)
 void nvm_destroy(nvm_t *vm)
 {
   /* {{{ nvm_destroy body */
-  fclose(file_p);
+  /*fclose(file_p);*/
   free(vm);
   /* }}} */
 }
 
+int nvm_blastoff(nvm_t *vm)
+{
+  /* TODO: close it somewhere else */
+  fclose(file_p);
+  /* open the file */
+  FILE *f = fopen("bytecode.nc", "rb");
+  /* get the file size */
+  struct stat st;
+  stat("bytecode.nc", &st);
+  /* array of our bytes */
+  BYTE bytes[st.st_size];
+  /* fetch the file */
+  fread(bytes, st.st_size, sizeof(BYTE), f);
+
+  /* an `int` is four bytes, but we're reading one byte at a time */
+  BYTE byte_one, byte_two, byte_three, byte_four;
+  /* this is the final number which is a result of connecting the four mentioned
+   * above */
+  int num;
+
+  /* we need to get over the version */
+  for (int i = 3; i < st.st_size; i++){
+    switch (bytes[i]){
+      case PUSH:
+        /* extract the bytes */
+        byte_one   =  0x00000000 ^ bytes[i + 1];
+        byte_two   = (0x00000000 ^ bytes[i + 2]) << 2;
+        byte_three = (0x00000000 ^ bytes[i + 3]) << 4;
+        byte_four  = (0x00000000 ^ bytes[i + 4]) << 6;
+        /* assemble the final number */
+        num = 0x00000000 ^ byte_one ^ byte_two ^ byte_three ^ byte_four;
+        /* skip over the bytes */
+        i += 4;
+
+        printf("push %d\n", num, num);
+        break;
+      case POP:
+        /* extract the bytes */
+        byte_one   =  0x00000000 ^ bytes[i + 1];
+        byte_two   = (0x00000000 ^ bytes[i + 2]) << 2;
+        byte_three = (0x00000000 ^ bytes[i + 3]) << 4;
+        byte_four  = (0x00000000 ^ bytes[i + 4]) << 6;
+        /* assemble the final number */
+        num = 0x00000000 ^ byte_one ^ byte_two ^ byte_three ^ byte_four;
+        /* skibytes over the bytes */
+        i += 4;
+
+        printf("pop %d\n", num, num);
+        break;
+      case BINARY_ADD:
+        printf("add\n");
+        break;
+      case BINARY_SUB:
+        printf("sub\n");
+        break;
+      case BINARY_MUL:
+        printf("mul\n");
+        break;
+      case BINARY_DIV:
+        printf("div\n");
+        break;
+      default:
+        printf("unknown %d (%08X)\n", bytes[i], bytes[i]);
+        /* you fail the game */
+        return 1;
+        break;
+    }
+  }
+
+  fclose(f);
+
+  return 0;
+}
+
 /*
- * Avantasia, Edguy
+ * Avantasia, Edguy, Iron Savior
  *
  */

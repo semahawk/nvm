@@ -46,6 +46,9 @@ int main(void)
   Parse(parser, NUMBER, 9);
   Parse(parser, 0, 0);
 
+  /* starts off the reading from file and printing the ops */
+  nvm_blastoff(vm);
+
   ParseFree(parser, free);
   nvm_destroy(vm);
 

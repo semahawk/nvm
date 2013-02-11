@@ -12,8 +12,8 @@
  * Obviously.
  */
 #define NVM_VERSION_PATCH 1
-#define NVM_VERSION_MINOR 2
-#define NVM_VERSION_MAJOR 3
+#define NVM_VERSION_MINOR 0
+#define NVM_VERSION_MAJOR 0
 
 /*
  * Maximum size of the stack. Probably I should make it extendable in case of
@@ -35,6 +35,11 @@
 #define BINARY_SUB 0x03
 #define BINARY_MUL 0x04
 #define BINARY_DIV 0x05
+
+/*
+ * Some handy defines.
+ */
+#define BYTE unsigned char
 
 /*
  * The main type for NVM.
@@ -60,7 +65,7 @@ int pop(void);
  * description: pops a value twice, and performs a binary <operation> on those
  *              operands, and pushes the result
  */
-void binop(unsigned operation);
+void binop(BYTE operation);
 
 /*
  * name:        print_stack
@@ -82,7 +87,7 @@ void debug(const char *message, ...);
  * name:        write_line
  * description: writes a line to `file_p` in a binary format (hopefully)
  */
-void write_line(unsigned operation);
+void write_line(BYTE operation);
 
 /*
  * name:        is_empty
@@ -99,6 +104,14 @@ bool is_empty(void);
  * return:      pointer to a new malloced object or NULL if malloc failed
  */
 nvm_t *nvm_init(const char *filename);
+
+/*
+ * name:        nvm_blastoff
+ * description: starts off the executing progress
+ * return:      0 if everything went OK
+ *              1 if not
+ */
+int nvm_blastoff(nvm_t *vm);
 
 /*
  * name:        nvm_destroy

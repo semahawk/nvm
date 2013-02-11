@@ -27,24 +27,24 @@ int main(void)
   }
 
   /* input: (2 + 2) * 2 / 4 * (10 + 4) + 9 */
-  Parse(parser, LPAREN, 0);
-  Parse(parser, NUMBER, 2);
-  Parse(parser, PLUS, 0);
-  Parse(parser, NUMBER, 2);
-  Parse(parser, RPAREN, 0);
-  Parse(parser, TIMES, 0);
-  Parse(parser, NUMBER, 2);
-  Parse(parser, DIVIDE, 0);
-  Parse(parser, NUMBER, 4);
-  Parse(parser, TIMES, 0);
-  Parse(parser, LPAREN, 0);
-  Parse(parser, NUMBER, 10);
-  Parse(parser, PLUS, 0);
-  Parse(parser, NUMBER, 4);
-  Parse(parser, RPAREN, 0);
-  Parse(parser, PLUS, 0);
-  Parse(parser, NUMBER, 9);
-  Parse(parser, 0, 0);
+  /*Parse(parser, LPAREN, 0);*/
+  /*Parse(parser, NUMBER, 2);*/
+  /*Parse(parser, PLUS, 0);*/
+  /*Parse(parser, NUMBER, 2);*/
+  /*Parse(parser, RPAREN, 0);*/
+  /*Parse(parser, TIMES, 0);*/
+  /*Parse(parser, NUMBER, 2);*/
+  /*Parse(parser, DIVIDE, 0);*/
+  /*Parse(parser, NUMBER, 4);*/
+  /*Parse(parser, TIMES, 0);*/
+  /*Parse(parser, LPAREN, 0);*/
+  /*Parse(parser, NUMBER, 10);*/
+  /*Parse(parser, PLUS, 0);*/
+  /*Parse(parser, NUMBER, 4);*/
+  /*Parse(parser, RPAREN, 0);*/
+  /*Parse(parser, PLUS, 0);*/
+  /*Parse(parser, NUMBER, 9);*/
+  /*Parse(parser, 0, 0);*/
 
   /* starts off the reading from file and printing the ops */
   nvm_blastoff(vm);

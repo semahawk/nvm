@@ -6,6 +6,7 @@
 #ifndef NVM_H
 #define NVM_H
 
+#include <stdint.h>
 #include <stdbool.h>
 
 /*
@@ -22,19 +23,18 @@
 #define STACK_SIZE 10
 
 /*
- * Used for debugging purposes.
+ * Used for verbosity/debugging purposes.
  */
-#define DEBUG
+#define VERBOSE 1
 
 /*
  * List of opcodes.
  */
 #define PUSH       0x00
-#define POP        0x01
-#define BINARY_ADD 0x02
-#define BINARY_SUB 0x03
-#define BINARY_MUL 0x04
-#define BINARY_DIV 0x05
+#define BINARY_ADD 0x01
+#define BINARY_SUB 0x02
+#define BINARY_MUL 0x03
+#define BINARY_DIV 0x04
 
 /*
  * Some handy defines.
@@ -45,49 +45,36 @@
  * The main type for NVM.
  */
 typedef struct {
-  /* TODO: populate! */
+  const char *filename;
 } nvm_t;
 
 /*
  * name:        push
  * description: pushes given <value> to the stack
+ *              <program_count> is used for verbosity/debugging
  */
-void push(int value);
+void push(uint16_t program_count, int value);
 
 /*
  * name:        pop
  * description: returns the top-most value from the stack, and reduces it's size
+ *              <program_count> is used for verbosity/debugging
  */
-int pop(void);
+int pop(uint16_t program_count);
 
 /*
  * name:        binop
  * description: pops a value twice, and performs a binary <operation> on those
  *              operands, and pushes the result
+ *              <program_count> is used for verbosity/debugging
  */
-void binop(BYTE operation);
+void binop(uint16_t program_count, BYTE operation);
 
 /*
  * name:        print_stack
  * description: prints what's left on stack
  */
 void print_stack(void);
-
-/*
- * name:        debug
- * description: a handy function which prints <message> in the following format:
- *
- *              <number>: <message><newline>
- *
- *              where <number> is current action number (variable `pc` in nvm.c)
- */
-void debug(const char *message, ...);
-
-/*
- * name:        write_line
- * description: writes a line to `file_p` in a binary format (hopefully)
- */
-void write_line(BYTE operation);
 
 /*
  * name:        is_empty

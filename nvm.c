@@ -28,105 +28,78 @@
 
 /* The Stack */
 static int stack[STACK_SIZE];
-/* number of values on the stack */
-static unsigned stack_size = 0;
-/* program counter */
-static uint16_t pc = 0;
-/* file containing the bytecode */
-static FILE *file_p;
+/* 'points' to the current value on the stack */
+static unsigned stack_ptr = 0;
 
-void push(int value)
+void push(uint16_t pc, int value)
 {
   /* {{{ push body */
-  if (stack_size >= STACK_SIZE){
+  if (stack_ptr >= STACK_SIZE){
     /* TODO: extend the stack */
     fprintf(stderr, "stack overflow!\n");
     exit(1);
   }
 
-  BYTE op = PUSH;
-
-  /* write to the file */
-  fwrite(&pc, sizeof pc, 1, file_p);
-  fwrite(&op, sizeof op, 1, file_p);
-  fwrite(&value, sizeof value, 1, file_p);
-
-#ifdef DEBUG
-  debug("push %d", value);
+#if VERBOSE
+  printf("%02x: push %d\n", pc, value);
 #endif
-  pc++;
 
-  stack[stack_size++] = value;
+  stack[stack_ptr++] = value;
   /* }}} */
 }
 
-int pop(void)
+int pop(uint16_t pc)
 {
   /* {{{ pop body */
-  int value = stack[--stack_size];
-  BYTE op = POP;
-
-  /* write to the file */
-  fwrite(&pc, sizeof pc, 1, file_p);
-  fwrite(&op, sizeof op, 1, file_p);
-  fwrite(&value, sizeof value, 1, file_p);
-
-#ifdef DEBUG
-  debug("pop %d", value);
+#if VERBOSE
+  printf("%02x: pop", pc);
 #endif
-  pc++;
 
-  return value;
+  return stack[--stack_ptr];
   /* }}} */
 }
 
-void binop(BYTE op){
+void binop(uint16_t pc, BYTE op){
   /* {{{ binop body */
-  int b = pop();
-  int a = pop();
+  int b = pop(pc);
+  int a = pop(pc);
   int res;
-
-  /* write to the file */
-  fwrite(&pc, sizeof pc, 1, file_p);
-  fwrite(&op, sizeof op, 1, file_p);
 
   switch (op){
     case BINARY_ADD:
       res = a + b;
-#ifdef DEBUG
-      debug("add");
+#if VERBOSE
+      printf("%02x: add\n", pc);
 #endif
       break;
     case BINARY_SUB:
       res = a - b;
-#ifdef DEBUG
-      debug("sub");
+#if VERBOSE
+      printf("%02x: sub\n", pc);
 #endif
       break;
     case BINARY_MUL:
       res = a * b;
-#ifdef DEBUG
-      debug("mul");
+#if VERBOSE
+      printf("%02x: mul\n", pc);
 #endif
       break;
     case BINARY_DIV:
       res = a / b;
-#ifdef DEBUG
-      debug("div");
+#if VERBOSE
+      printf("%02x: div\n", pc);
 #endif
       break;
   }
 
-  pc++;
-
-  push(res);
+  push(pc, res);
   /* }}} */
 }
 
 bool is_empty(void)
 {
   /* {{{ is_empty body */
-  return stack_size == 0 ? true : false;
+  return stack_ptr == 0 ? true : false;
   /* }}} */
 }
 
@@ -134,22 +107,9 @@ void print_stack(void)
 {
   /* {{{ print_stack body */
   unsigned i;
-  for (i = 0; i < stack_size; i++){
+  for (i = 0; i < stack_ptr; i++){
     printf("item on stack: %d\n", stack[i]);
   }
-  /* }}} */
-}
-
-void debug(const char *msg, ...)
-{
-  /* {{{ debug body */
-  va_list ap;
-
-  printf("%02x: ", pc);
-  va_start(ap, msg);
-  vprintf(msg, ap);
-  printf("\n");
-  va_end(ap);
   /* }}} */
 }
 
@@ -162,15 +122,7 @@ nvm_t *nvm_init(const char *filename)
     return NULL;
   }
 
-  file_p = fopen(filename, "wb");
-
-  BYTE major = NVM_VERSION_MAJOR;
-  BYTE minor = NVM_VERSION_MINOR;
-  BYTE patch = NVM_VERSION_PATCH;
-
-  fwrite(&major, sizeof major, 1, file_p);
-  fwrite(&minor, sizeof minor, 1, file_p);
-  fwrite(&patch, sizeof patch, 1, file_p);
+  vm->filename = filename;
 
   return vm;
   /* }}} */
@@ -179,7 +131,6 @@ nvm_t *nvm_init(const char *filename)
 void nvm_destroy(nvm_t *vm)
 {
   /* {{{ nvm_destroy body */
-  /*fclose(file_p);*/
   free(vm);
   /* }}} */
 }
@@ -187,13 +138,11 @@ void nvm_destroy(nvm_t *vm)
 int nvm_blastoff(nvm_t *vm)
 {
   /* {{{ nvm_blastoff body */
-  /* TODO: close it somewhere else */
-  fclose(file_p);
   /* open the file */
-  FILE *f = fopen("bytecode.nc", "rb");
+  FILE *f = fopen(vm->filename, "rb");
   /* get the file size */
   struct stat st;
-  stat("bytecode.nc", &st);
+  stat(vm->filename, &st);
   /* array of our bytes */
   BYTE bytes[st.st_size];
   /* fetch the file */
@@ -203,7 +152,7 @@ int nvm_blastoff(nvm_t *vm)
   BYTE byte_one, byte_two, byte_three, byte_four;
   /* this is the final number which is a result of connecting the four mentioned
    * above */
-  int num;
+  int value;
   /* program counter */
   uint32_t pc;
 
@@ -226,39 +175,20 @@ int nvm_blastoff(nvm_t *vm)
         byte_three = (0x00000000 ^ bytes[i + 3]) << 4;
         byte_four  = (0x00000000 ^ bytes[i + 4]) << 6;
         /* assemble the final number */
-        num = 0x00000000 ^ byte_one ^ byte_two ^ byte_three ^ byte_four;
+        value = 0x00000000 ^ byte_one ^ byte_two ^ byte_three ^ byte_four;
         /* skip over the bytes */
         i += 4;
 
-        printf("%02x: push %d\n", pc, num);
+        push(pc, value);
         break;
-      case POP:
-        /* extract the bytes */
-        byte_one   =  0x00000000 ^ bytes[i + 1];
-        byte_two   = (0x00000000 ^ bytes[i + 2]) << 2;
-        byte_three = (0x00000000 ^ bytes[i + 3]) << 4;
-        byte_four  = (0x00000000 ^ bytes[i + 4]) << 6;
-        /* assemble the final number */
-        num = 0x00000000 ^ byte_one ^ byte_two ^ byte_three ^ byte_four;
-        /* skibytes over the bytes */
-        i += 4;
-
-        printf("%02x: pop %d\n", pc, num);
-        break;
-      case BINARY_ADD:
-        printf("%02x: add\n", pc);
-        break;
+      case BINARY_ADD: /* fall through */
       case BINARY_SUB:
-        printf("%02x: sub\n", pc);
-        break;
       case BINARY_MUL:
-        printf("%02x: mul\n", pc);
-        break;
       case BINARY_DIV:
-        printf("%02x: div\n", pc);
+        binop(pc, bytes[i]);
         break;
       default:
-        printf("%02x: unknown %d (%08X)\n", pc, bytes[i], bytes[i]);
+        printf("%02x: error: unknown op: %d (%08X)\n", pc, bytes[i], bytes[i]);
         /* you fail the game */
         return 1;
         break;

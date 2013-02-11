@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include <sys/stat.h>
 
 #include "nvm.h"
@@ -29,8 +30,8 @@
 static int stack[STACK_SIZE];
 /* number of values on the stack */
 static unsigned stack_size = 0;
-/* program counter, used only in the `debug` function */
-static unsigned pc = 0;
+/* program counter */
+static uint16_t pc = 0;
 /* file containing the bytecode */
 static FILE *file_p;
 
@@ -46,6 +47,7 @@ void push(int value)
   BYTE op = PUSH;
 
   /* write to the file */
+  fwrite(&pc, sizeof pc, 1, file_p);
   fwrite(&op, sizeof op, 1, file_p);
   fwrite(&value, sizeof value, 1, file_p);
 
@@ -65,6 +67,7 @@ int pop(void)
   BYTE op = POP;
 
   /* write to the file */
+  fwrite(&pc, sizeof pc, 1, file_p);
   fwrite(&op, sizeof op, 1, file_p);
   fwrite(&value, sizeof value, 1, file_p);
 
@@ -84,7 +87,8 @@ void binop(BYTE op){
   int res;
 
   /* write to the file */
-  fwrite(&op, sizeof(op), 1, file_p);
+  fwrite(&pc, sizeof pc, 1, file_p);
+  fwrite(&op, sizeof op, 1, file_p);
 
   switch (op){
     case BINARY_ADD:
@@ -141,7 +145,7 @@ void debug(const char *msg, ...)
   /* {{{ debug body */
   va_list ap;
 
-  printf("%03d: ", pc);
+  printf("%02x: ", pc);
   va_start(ap, msg);
   vprintf(msg, ap);
   printf("\n");
@@ -182,6 +186,7 @@ void nvm_destroy(nvm_t *vm)
 
 int nvm_blastoff(nvm_t *vm)
 {
+  /* {{{ nvm_blastoff body */
   /* TODO: close it somewhere else */
   fclose(file_p);
   /* open the file */
@@ -199,10 +204,21 @@ int nvm_blastoff(nvm_t *vm)
   /* this is the final number which is a result of connecting the four mentioned
    * above */
   int num;
+  /* program counter */
+  uint32_t pc;
 
-  /* we need to get over the version */
+  /* we need to get over the version, so we start at 3 */
   for (int i = 3; i < st.st_size; i++){
+    /* extract the bytes */
+    byte_one   =  0x0000 ^ bytes[i];
+    byte_two   = (0x0000 ^ bytes[i + 1]) << 2;
+    /* assemble the final number */
+    pc = 0x0000 ^ byte_one ^ byte_two;
+    /* skip over the bytes */
+    i += 2;
+
     switch (bytes[i]){
+      /* {{{ main op switch */
       case PUSH:
         /* extract the bytes */
         byte_one   =  0x00000000 ^ bytes[i + 1];
@@ -214,7 +230,7 @@ int nvm_blastoff(nvm_t *vm)
         /* skip over the bytes */
         i += 4;
 
-        printf("push %d\n", num, num);
+        printf("%02x: push %d\n", pc, num);
         break;
       case POP:
         /* extract the bytes */
@@ -227,31 +243,33 @@ int nvm_blastoff(nvm_t *vm)
         /* skibytes over the bytes */
         i += 4;
 
-        printf("pop %d\n", num, num);
+        printf("%02x: pop %d\n", pc, num);
         break;
       case BINARY_ADD:
-        printf("add\n");
+        printf("%02x: add\n", pc);
         break;
       case BINARY_SUB:
-        printf("sub\n");
+        printf("%02x: sub\n", pc);
         break;
       case BINARY_MUL:
-        printf("mul\n");
+        printf("%02x: mul\n", pc);
         break;
       case BINARY_DIV:
-        printf("div\n");
+        printf("%02x: div\n", pc);
         break;
       default:
-        printf("unknown %d (%08X)\n", bytes[i], bytes[i]);
+        printf("%02x: unknown %d (%08X)\n", pc, bytes[i], bytes[i]);
         /* you fail the game */
         return 1;
         break;
+      /* }}} */
     }
   }
 
   fclose(f);
 
   return 0;
+  /* }}} */
 }
 
 /*

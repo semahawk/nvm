@@ -155,10 +155,10 @@ int nvm_blastoff(nvm_t *vm)
   /* we need to get over the version, so we start at 3 */
   for (int i = 3; i < st.st_size; i++){
     /* extract the bytes */
-    byte_one   =  0x0000 ^ bytes[i];
-    byte_two   = (0x0000 ^ bytes[i + 1]) << 2;
+    byte_one   = bytes[i];
+    byte_two   = bytes[i + 1] << 2;
     /* assemble the final number */
-    pc = 0x0000 ^ byte_one ^ byte_two;
+    pc = byte_one ^ byte_two;
     /* skip over the bytes */
     i += 2;
 
@@ -166,12 +166,12 @@ int nvm_blastoff(nvm_t *vm)
       /* {{{ main op switch */
       case PUSH:
         /* extract the bytes */
-        byte_one   =  0x00000000 ^ bytes[i + 1];
-        byte_two   = (0x00000000 ^ bytes[i + 2]) << 2;
-        byte_three = (0x00000000 ^ bytes[i + 3]) << 4;
-        byte_four  = (0x00000000 ^ bytes[i + 4]) << 6;
+        byte_one   = bytes[i + 1];
+        byte_two   = bytes[i + 2] << 2;
+        byte_three = bytes[i + 3] << 4;
+        byte_four  = bytes[i + 4] << 6;
         /* assemble the final number */
-        value = 0x00000000 ^ byte_one ^ byte_two ^ byte_three ^ byte_four;
+        value = byte_one ^ byte_two ^ byte_three ^ byte_four;
         /* skip over the bytes */
         i += 4;
 

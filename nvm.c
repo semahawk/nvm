@@ -48,21 +48,17 @@ void push(uint16_t pc, int value)
   /* }}} */
 }
 
-int pop(uint16_t pc)
+int pop(void)
 {
   /* {{{ pop body */
-#if VERBOSE
-  printf("%02x: pop", pc);
-#endif
-
   return stack[--stack_ptr];
   /* }}} */
 }
 
 void binop(uint16_t pc, BYTE op){
   /* {{{ binop body */
-  int b = pop(pc);
-  int a = pop(pc);
+  int b = pop();
+  int a = pop();
   int res;
 
   switch (op){

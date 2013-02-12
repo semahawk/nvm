@@ -31,10 +31,10 @@
  * List of opcodes.
  */
 #define PUSH       0x00
-#define BINARY_ADD 0x01
-#define BINARY_SUB 0x02
-#define BINARY_MUL 0x03
-#define BINARY_DIV 0x04
+#define BINARY_ADD 0x02
+#define BINARY_SUB 0x03
+#define BINARY_MUL 0x04
+#define BINARY_DIV 0x05
 
 /*
  * Some handy defines.
@@ -58,9 +58,8 @@ void push(uint16_t program_count, int value);
 /*
  * name:        pop
  * description: returns the top-most value from the stack, and reduces it's size
- *              <program_count> is used for verbosity/debugging
  */
-int pop(uint16_t program_count);
+int pop(void);
 
 /*
  * name:        binop

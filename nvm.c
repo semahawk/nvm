@@ -151,9 +151,17 @@ int nvm_blastoff(nvm_t *vm)
   int value;
   /* program counter */
   uint32_t pc;
+  /* we know this guy */
+  int i = 0;
 
-  /* we need to get over the version, so we start at 3 */
-  for (int i = 3; i < st.st_size; i++){
+#if VERBOSE
+  printf("## using NVM version %u.", bytes[i++]);
+  printf("%u.", bytes[i++]);
+  printf("%u ##\n\n", bytes[i]);
+#endif
+
+  /* we skip over the version anyway */
+  for (i = 3; i < st.st_size; i++){
     /* extract the bytes */
     byte_one   = bytes[i];
     byte_two   = bytes[i + 1] << 2;

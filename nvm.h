@@ -30,7 +30,7 @@
 /*
  * List of opcodes.
  */
-#define PUSH       0x00
+#define PUSH       0x01
 #define BINARY_ADD 0x02
 #define BINARY_SUB 0x03
 #define BINARY_MUL 0x04

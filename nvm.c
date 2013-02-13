@@ -95,9 +95,6 @@ void print_stack(void)
   /* {{{ print_stack body */
   unsigned i;
 
-  if (stack_ptr == 0)
-    printf("stack empty!\n");
-
   for (i = 0; i < stack_ptr; i++){
     printf("item on stack: %d\n", stack[i]);
   }
@@ -220,6 +217,8 @@ int nvm_blastoff(nvm_t *vm)
       /* }}} */
     }
   }
+
+  print_stack();
 
   fclose(f);
 

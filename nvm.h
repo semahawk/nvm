@@ -53,9 +53,8 @@ typedef struct {
 /*
  * name:        push
  * description: pushes given <value> to the stack
- *              <program_count> is used for verbosity/debugging
  */
-void push(uint16_t program_count, int value);
+void push(int value);
 
 /*
  * name:        pop
@@ -66,20 +65,18 @@ int pop(void);
 /*
  * name:        discard
  * description: changes the top-most value on the stack to 0, and reduces stack's size
- *              <program_count> is used for verbosity/debugging
  *
  *              It differs from `pop` in that it doesn't return anything, and
  *              it's an op in this VM.
  */
-void discard(uint16_t program_count);
+void discard(void);
 
 /*
  * name:        binop
  * description: pops a value twice, and performs a binary <operation> on those
  *              operands, and pushes the result
- *              <program_count> is used for verbosity/debugging
  */
-void binop(uint16_t program_count, BYTE operation);
+void binop(BYTE operation);
 
 /*
  * name:        print_stack

@@ -31,7 +31,7 @@ static int stack[STACK_SIZE];
 /* 'points' to the current value on the stack */
 static unsigned stack_ptr = 0;
 
-void push(uint16_t pc, int value)
+void push(int value)
 {
   /* {{{ push body */
   if (stack_ptr >= STACK_SIZE){
@@ -51,14 +51,14 @@ int pop(void)
   /* }}} */
 }
 
-void discard(uint16_t pc)
+void discard(void)
 {
   /* {{{ discard body */
   stack[stack_ptr--] = 0;
   /* }}} */
 }
 
-void binop(uint16_t pc, BYTE op){
+void binop(BYTE op){
   /* {{{ binop body */
   int b = pop();
   int a = pop();
@@ -79,7 +79,7 @@ void binop(uint16_t pc, BYTE op){
       break;
   }
 
-  push(pc, res);
+  push(res);
   /* }}} */
 }
 
@@ -180,37 +180,37 @@ int nvm_blastoff(nvm_t *vm)
         /* skip over the bytes */
         i += 4;
 
-        push(pc, value);
+        push(value);
         break;
       case DISCARD:
 #if VERBOSE
         printf("%04x: discard\n", pc);
 #endif
-        discard(pc);
+        discard();
         break;
       case BINARY_ADD:
 #if VERBOSE
         printf("%04x: add\n", pc);
 #endif
-        binop(pc, bytes[i]);
+        binop(bytes[i]);
         break;
       case BINARY_SUB:
 #if VERBOSE
         printf("%04x: sub\n", pc);
 #endif
-        binop(pc, bytes[i]);
+        binop(bytes[i]);
         break;
       case BINARY_MUL:
 #if VERBOSE
         printf("%04x: mul\n", pc);
 #endif
-        binop(pc, bytes[i]);
+        binop(bytes[i]);
         break;
       case BINARY_DIV:
 #if VERBOSE
         printf("%04x: div\n", pc);
 #endif
-        binop(pc, bytes[i]);
+        binop(bytes[i]);
         break;
       default:
         printf("%04x: error: unknown op: %d (%08X)\n", pc, bytes[i], bytes[i]);

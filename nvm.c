@@ -55,6 +55,17 @@ int pop(void)
   /* }}} */
 }
 
+void discard(uint16_t pc)
+{
+  /* {{{ discard body */
+#if VERBOSE
+  printf("%02x: discard\n", pc);
+#endif
+
+  stack[stack_ptr--] = 0;
+  /* }}} */
+}
+
 void binop(uint16_t pc, BYTE op){
   /* {{{ binop body */
   int b = pop();
@@ -103,6 +114,10 @@ void print_stack(void)
 {
   /* {{{ print_stack body */
   unsigned i;
+
+  if (stack_ptr == 0)
+    printf("stack empty!\n");
+
   for (i = 0; i < stack_ptr; i++){
     printf("item on stack: %d\n", stack[i]);
   }
@@ -151,17 +166,14 @@ int nvm_blastoff(nvm_t *vm)
   int value;
   /* program counter */
   uint32_t pc;
-  /* we know this guy */
-  int i = 0;
 
 #if VERBOSE
-  printf("## using NVM version %u.", bytes[i++]);
-  printf("%u.", bytes[i++]);
-  printf("%u ##\n\n", bytes[i]);
+  printf("## using NVM version %u.", bytes[0]);
+  printf("%u.", bytes[1]);
+  printf("%u ##\n\n", bytes[2]);
 #endif
 
-  /* we skip over the version anyway */
-  for (i = 3; i < st.st_size; i++){
+  for (int i = 3; i < st.st_size; i++){
     /* extract the bytes */
     byte_one   = bytes[i];
     byte_two   = bytes[i + 1] << 2;
@@ -184,6 +196,9 @@ int nvm_blastoff(nvm_t *vm)
         i += 4;
 
         push(pc, value);
+        break;
+      case DISCARD:
+        discard(pc);
         break;
       case BINARY_ADD: /* fall through */
       case BINARY_SUB:

@@ -40,10 +40,6 @@ void push(uint16_t pc, int value)
     exit(1);
   }
 
-#if VERBOSE
-  printf("%02x: push %d\n", pc, value);
-#endif
-
   stack[stack_ptr++] = value;
   /* }}} */
 }
@@ -58,10 +54,6 @@ int pop(void)
 void discard(uint16_t pc)
 {
   /* {{{ discard body */
-#if VERBOSE
-  printf("%02x: discard\n", pc);
-#endif
-
   stack[stack_ptr--] = 0;
   /* }}} */
 }
@@ -75,27 +67,15 @@ void binop(uint16_t pc, BYTE op){
   switch (op){
     case BINARY_ADD:
       res = a + b;
-#if VERBOSE
-      printf("%02x: add\n", pc);
-#endif
       break;
     case BINARY_SUB:
       res = a - b;
-#if VERBOSE
-      printf("%02x: sub\n", pc);
-#endif
       break;
     case BINARY_MUL:
       res = a * b;
-#if VERBOSE
-      printf("%02x: mul\n", pc);
-#endif
       break;
     case BINARY_DIV:
       res = a / b;
-#if VERBOSE
-      printf("%02x: div\n", pc);
-#endif
       break;
   }
 
@@ -165,14 +145,13 @@ int nvm_blastoff(nvm_t *vm)
    * above */
   int value;
   /* program counter */
-  uint32_t pc;
+  uint16_t pc;
 
 #if VERBOSE
-  printf("## using NVM version %u.", bytes[0]);
-  printf("%u.", bytes[1]);
-  printf("%u ##\n\n", bytes[2]);
+  printf("## using NVM version %u.%u.%u ##\n\n", bytes[0], bytes[1], bytes[2]);
 #endif
 
+  /* we start from 3 to skip over the version */
   for (int i = 3; i < st.st_size; i++){
     /* extract the bytes */
     byte_one   = bytes[i];
@@ -185,6 +164,9 @@ int nvm_blastoff(nvm_t *vm)
     switch (bytes[i]){
       /* {{{ main op switch */
       case PUSH:
+#if VERBOSE
+        printf("%04x: push %d\n", pc, value);
+#endif
         /* extract the bytes */
         byte_one   = bytes[i + 1];
         byte_two   = bytes[i + 2] << 2;
@@ -198,17 +180,38 @@ int nvm_blastoff(nvm_t *vm)
         push(pc, value);
         break;
       case DISCARD:
+#if VERBOSE
+        printf("%04x: discard\n", pc);
+#endif
         discard(pc);
         break;
-      case BINARY_ADD: /* fall through */
+      case BINARY_ADD:
+#if VERBOSE
+        printf("%04x: add\n", pc);
+#endif
+        binop(pc, bytes[i]);
+        break;
       case BINARY_SUB:
+#if VERBOSE
+        printf("%04x: sub\n", pc);
+#endif
+        binop(pc, bytes[i]);
+        break;
       case BINARY_MUL:
+#if VERBOSE
+        printf("%04x: mul\n", pc);
+#endif
+        binop(pc, bytes[i]);
+        break;
       case BINARY_DIV:
+#if VERBOSE
+        printf("%04x: div\n", pc);
+#endif
         binop(pc, bytes[i]);
         break;
       default:
-        printf("%02x: error: unknown op: %d (%08X)\n", pc, bytes[i], bytes[i]);
-        /* you fail the game */
+        printf("%04x: error: unknown op: %d (%08X)\n", pc, bytes[i], bytes[i]);
+        /* you failed the game */
         return 1;
         break;
       /* }}} */

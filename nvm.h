@@ -30,6 +30,7 @@
 /*
  * List of opcodes.
  */
+#define NOP        0x00
 #define PUSH       0x01
 #define DISCARD    0x02
 #define BINARY_ADD 0x03

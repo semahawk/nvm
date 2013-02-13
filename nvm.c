@@ -163,6 +163,9 @@ int nvm_blastoff(nvm_t *vm)
 
     switch (bytes[i]){
       /* {{{ main op switch */
+      case NOP:
+        /* that was tough */
+        break;
       case PUSH:
 #if VERBOSE
         printf("%04x: push %d\n", pc, value);

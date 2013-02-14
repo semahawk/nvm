@@ -48,19 +48,21 @@
  */
 typedef struct {
   const char *filename;
+  int stack[STACK_SIZE];
+  unsigned stack_ptr;
 } nvm_t;
 
 /*
  * name:        push
  * description: pushes given <value> to the stack
  */
-void push(int value);
+void push(nvm_t *virtual_machine, int value);
 
 /*
  * name:        pop
  * description: returns the top-most value from the stack, and reduces it's size
  */
-int pop(void);
+int pop(nvm_t *virtual_machine);
 
 /*
  * name:        discard
@@ -69,26 +71,26 @@ int pop(void);
  *              It differs from `pop` in that it doesn't return anything, and
  *              it's an op in this VM.
  */
-void discard(void);
+void discard(nvm_t *virtual_machine);
 
 /*
  * name:        binop
  * description: pops a value twice, and performs a binary <operation> on those
  *              operands, and pushes the result
  */
-void binop(BYTE operation);
+void binop(nvm_t *virtual_machine, BYTE operation);
 
 /*
  * name:        print_stack
  * description: prints what's left on stack
  */
-void print_stack(void);
+void print_stack(nvm_t *virtual_machine);
 
 /*
  * name:        is_empty
  * description: return `true` if the stack is empty, otherwise `false`
  */
-bool is_empty(void);
+bool is_empty(nvm_t *virtual_machine);
 
 /*
  * name:        nvm_init

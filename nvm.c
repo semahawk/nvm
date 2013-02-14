@@ -26,42 +26,37 @@
 #include "nvm.h"
 #include "grammar.h"
 
-/* The Stack */
-static int stack[STACK_SIZE];
-/* 'points' to the current value on the stack */
-static unsigned stack_ptr = 0;
-
-void push(int value)
+void push(nvm_t *vm, int value)
 {
   /* {{{ push body */
-  if (stack_ptr >= STACK_SIZE){
+  if (vm->stack_ptr >= STACK_SIZE){
     /* TODO: extend the stack */
     fprintf(stderr, "stack overflow!\n");
     exit(1);
   }
 
-  stack[stack_ptr++] = value;
+  vm->stack[vm->stack_ptr++] = value;
   /* }}} */
 }
 
-int pop(void)
+int pop(nvm_t *vm)
 {
   /* {{{ pop body */
-  return stack[--stack_ptr];
+  return vm->stack[--vm->stack_ptr];
   /* }}} */
 }
 
-void discard(void)
+void discard(nvm_t *vm)
 {
   /* {{{ discard body */
-  stack[stack_ptr--] = 0;
+  vm->stack[vm->stack_ptr--] = 0;
   /* }}} */
 }
 
-void binop(BYTE op){
+void binop(nvm_t *vm, BYTE op){
   /* {{{ binop body */
-  int b = pop();
-  int a = pop();
+  int b = pop(vm);
+  int a = pop(vm);
   int res;
 
   switch (op){
@@ -79,24 +74,24 @@ void binop(BYTE op){
       break;
   }
 
-  push(res);
+  push(vm, res);
   /* }}} */
 }
 
-bool is_empty(void)
+bool is_empty(nvm_t *vm)
 {
   /* {{{ is_empty body */
-  return stack_ptr == 0 ? true : false;
+  return vm->stack_ptr == 0 ? true : false;
   /* }}} */
 }
 
-void print_stack(void)
+void print_stack(nvm_t *vm)
 {
   /* {{{ print_stack body */
   unsigned i;
 
-  for (i = 0; i < stack_ptr; i++){
-    printf("item on stack: %d\n", stack[i]);
+  for (i = 0; i < vm->stack_ptr; i++){
+    printf("item on stack: %d\n", vm->stack[i]);
   }
   /* }}} */
 }
@@ -111,6 +106,7 @@ nvm_t *nvm_init(const char *filename)
   }
 
   vm->filename = filename;
+  vm->stack_ptr = 0;
 
   return vm;
   /* }}} */
@@ -151,8 +147,8 @@ int nvm_blastoff(nvm_t *vm)
   /* we start from 3 to skip over the version */
   for (int i = 3; i < st.st_size; i++){
     /* extract the bytes */
-    byte_one   = bytes[i];
-    byte_two   = bytes[i + 1] << 2;
+    byte_one = bytes[i];
+    byte_two = bytes[i + 1] << 2;
     /* assemble the final number */
     pc = byte_one ^ byte_two;
     /* skip over the bytes */
@@ -177,37 +173,37 @@ int nvm_blastoff(nvm_t *vm)
         /* skip over the bytes */
         i += 4;
 
-        push(value);
+        push(vm, value);
         break;
       case DISCARD:
 #if VERBOSE
         printf("%04x: discard\n", pc);
 #endif
-        discard();
+        discard(vm);
         break;
       case BINARY_ADD:
 #if VERBOSE
         printf("%04x: add\n", pc);
 #endif
-        binop(bytes[i]);
+        binop(vm, bytes[i]);
         break;
       case BINARY_SUB:
 #if VERBOSE
         printf("%04x: sub\n", pc);
 #endif
-        binop(bytes[i]);
+        binop(vm, bytes[i]);
         break;
       case BINARY_MUL:
 #if VERBOSE
         printf("%04x: mul\n", pc);
 #endif
-        binop(bytes[i]);
+        binop(vm, bytes[i]);
         break;
       case BINARY_DIV:
 #if VERBOSE
         printf("%04x: div\n", pc);
 #endif
-        binop(bytes[i]);
+        binop(vm, bytes[i]);
         break;
       default:
         printf("%04x: error: unknown op: %d (%08X)\n", pc, bytes[i], bytes[i]);
@@ -218,7 +214,7 @@ int nvm_blastoff(nvm_t *vm)
     }
   }
 
-  print_stack();
+  print_stack(vm);
 
   fclose(f);
 

@@ -160,9 +160,6 @@ int nvm_blastoff(nvm_t *vm)
         /* that was tough */
         break;
       case PUSH:
-#if VERBOSE
-        printf("%04x: push %d\n", pc, value);
-#endif
         /* extract the bytes */
         byte_one   = bytes[i + 1];
         byte_two   = bytes[i + 2] << 2;
@@ -172,6 +169,10 @@ int nvm_blastoff(nvm_t *vm)
         value = byte_one ^ byte_two ^ byte_three ^ byte_four;
         /* skip over the bytes */
         i += 4;
+
+#if VERBOSE
+        printf("%04x: push %d\n", pc, value);
+#endif
 
         push(vm, value);
         break;

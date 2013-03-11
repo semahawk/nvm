@@ -26,7 +26,7 @@
 #include "nvm.h"
 #include "grammar.h"
 
-void push(nvm_t *vm, int value)
+inline void push(nvm_t *vm, int value)
 {
   /* {{{ push body */
   if (vm->stack_ptr >= STACK_SIZE){
@@ -39,42 +39,55 @@ void push(nvm_t *vm, int value)
   /* }}} */
 }
 
-int pop(nvm_t *vm)
+inline int pop(nvm_t *vm)
 {
   /* {{{ pop body */
   return vm->stack[--vm->stack_ptr];
   /* }}} */
 }
 
-void discard(nvm_t *vm)
+inline void discard(nvm_t *vm)
 {
   /* {{{ discard body */
   vm->stack[vm->stack_ptr--] = 0;
   /* }}} */
 }
 
-void binop(nvm_t *vm, BYTE op){
+inline void rot_two(nvm_t *vm)
+{
+  /* {{{ rot_two body */
+  /* First on Stack */
+  int FOS = pop(vm);
+  /* Second on Stack */
+  int SOS = pop(vm);
+
+  push(vm, FOS);
+  push(vm, SOS);
+  /* }}} */
+}
+
+inline void binop(nvm_t *vm, BYTE op){
   /* {{{ binop body */
-  int b = pop(vm);
-  int a = pop(vm);
-  int res;
+  int FOS = pop(vm);
+  int SOS = pop(vm);
+  int result;
 
   switch (op){
     case BINARY_ADD:
-      res = a + b;
+      result = SOS + FOS;
       break;
     case BINARY_SUB:
-      res = a - b;
+      result = SOS - FOS;
       break;
     case BINARY_MUL:
-      res = a * b;
+      result = SOS * FOS;
       break;
     case BINARY_DIV:
-      res = a / b;
+      result = SOS / FOS;
       break;
   }
 
-  push(vm, res);
+  push(vm, result);
   /* }}} */
 }
 
@@ -158,6 +171,9 @@ int nvm_blastoff(nvm_t *vm)
       /* {{{ main op switch */
       case NOP:
         /* that was tough */
+#if VERBOSE
+        printf("%04x: nop\n", pc);
+#endif
         break;
       case PUSH:
         /* extract the bytes */
@@ -181,6 +197,12 @@ int nvm_blastoff(nvm_t *vm)
         printf("%04x: discard\n", pc);
 #endif
         discard(vm);
+        break;
+      case ROT_TWO:
+#if VERBOSE
+        printf("%04x: rot_two\n", pc);
+#endif
+        rot_two(vm);
         break;
       case BINARY_ADD:
 #if VERBOSE
@@ -224,6 +246,6 @@ int nvm_blastoff(nvm_t *vm)
 }
 
 /*
- * Avantasia, Edguy, Iron Savior
+ * Avantasia, Edguy, Iron Savior, Michael Schenker Group
  *
  */

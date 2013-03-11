@@ -51,7 +51,7 @@ int main(void)
   Parse(parser, NUMBER, 4);
   Parse(parser, RPAREN, 0);
   Parse(parser, PLUS, 0);
-  Parse(parser, NUMBER, 12);
+  Parse(parser, NUMBER, 9);
   Parse(parser, 0, 0);
   fclose(fp);
   ParseFree(parser, free);

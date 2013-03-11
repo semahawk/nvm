@@ -37,6 +37,7 @@
 #define BINARY_SUB 0x04
 #define BINARY_MUL 0x05
 #define BINARY_DIV 0x06
+#define ROT_TWO    0x07
 
 /*
  * Some handy defines.
@@ -72,6 +73,12 @@ int pop(nvm_t *virtual_machine);
  *              it's an op in this VM.
  */
 void discard(nvm_t *virtual_machine);
+
+/*
+ * name:        rot_two
+ * description: swaps the two top-most values on stack
+ */
+void rot_two(nvm_t *virtual_machine);
 
 /*
  * name:        binop

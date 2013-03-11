@@ -38,6 +38,7 @@
 #define BINARY_MUL 0x05
 #define BINARY_DIV 0x06
 #define ROT_TWO    0x07
+#define ROT_THREE  0x08
 
 /*
  * Some handy defines.
@@ -80,6 +81,13 @@ void discard(nvm_t *virtual_machine);
  * description: swaps the two top-most values on stack
  */
 void rot_two(nvm_t *virtual_machine);
+
+/*
+ * name:        rot_three
+ * description: lifts second and third stack item one position up, moves top
+ *              item down to position three
+ */
+void rot_three(nvm_t *virtual_machine);
 
 /*
  * name:        binop

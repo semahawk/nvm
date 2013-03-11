@@ -26,6 +26,13 @@
 #include "nvm.h"
 #include "grammar.h"
 
+/*
+ * FOS - First On Stack
+ * SOS - Second On Stack
+ * TOS - Third On Stack
+ *
+ */
+
 inline void push(nvm_t *vm, INT value)
 {
   /* {{{ push body */
@@ -62,6 +69,19 @@ inline void rot_two(nvm_t *vm)
   INT SOS = pop(vm);
 
   push(vm, FOS);
+  push(vm, SOS);
+  /* }}} */
+}
+
+inline void rot_three(nvm_t *vm)
+{
+  /* {{{ rot_three body */
+  INT FOS = pop(vm);
+  INT SOS = pop(vm);
+  INT TOS = pop(vm);
+
+  push(vm, FOS);
+  push(vm, TOS);
   push(vm, SOS);
   /* }}} */
 }
@@ -203,6 +223,12 @@ int nvm_blastoff(nvm_t *vm)
         printf("%04x: rot_two\n", pc);
 #endif
         rot_two(vm);
+        break;
+      case ROT_THREE:
+#if VERBOSE
+        printf("%04x: rot_three\n", pc);
+#endif
+        rot_three(vm);
         break;
       case BINARY_ADD:
 #if VERBOSE

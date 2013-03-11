@@ -26,7 +26,7 @@
 #include "nvm.h"
 #include "grammar.h"
 
-inline void push(nvm_t *vm, int value)
+inline void push(nvm_t *vm, INT value)
 {
   /* {{{ push body */
   if (vm->stack_ptr >= STACK_SIZE){
@@ -39,7 +39,7 @@ inline void push(nvm_t *vm, int value)
   /* }}} */
 }
 
-inline int pop(nvm_t *vm)
+inline INT pop(nvm_t *vm)
 {
   /* {{{ pop body */
   return vm->stack[--vm->stack_ptr];
@@ -57,9 +57,9 @@ inline void rot_two(nvm_t *vm)
 {
   /* {{{ rot_two body */
   /* First on Stack */
-  int FOS = pop(vm);
+  INT FOS = pop(vm);
   /* Second on Stack */
-  int SOS = pop(vm);
+  INT SOS = pop(vm);
 
   push(vm, FOS);
   push(vm, SOS);
@@ -68,9 +68,9 @@ inline void rot_two(nvm_t *vm)
 
 inline void binop(nvm_t *vm, BYTE op){
   /* {{{ binop body */
-  int FOS = pop(vm);
-  int SOS = pop(vm);
-  int result;
+  INT FOS = pop(vm);
+  INT SOS = pop(vm);
+  INT result;
 
   switch (op){
     case BINARY_ADD:
@@ -149,7 +149,7 @@ int nvm_blastoff(nvm_t *vm)
   BYTE byte_one, byte_two, byte_three, byte_four;
   /* this is the final number which is a result of connecting the four mentioned
    * above */
-  int value;
+  INT value;
   /* program counter */
   uint16_t pc;
 

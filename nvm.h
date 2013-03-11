@@ -43,6 +43,7 @@
  * Some handy defines.
  */
 #define BYTE unsigned char
+#define INT  int32_t
 
 /*
  * The main type for NVM.

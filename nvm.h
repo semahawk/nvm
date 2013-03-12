@@ -56,59 +56,6 @@ typedef struct {
 } nvm_t;
 
 /*
- * name:        push
- * description: pushes given <value> to the stack
- */
-void push(nvm_t *virtual_machine, int value);
-
-/*
- * name:        pop
- * description: returns the top-most value from the stack, and reduces it's size
- */
-int pop(nvm_t *virtual_machine);
-
-/*
- * name:        discard
- * description: changes the top-most value on the stack to 0, and reduces stack's size
- *
- *              It differs from `pop` in that it doesn't return anything, and
- *              it's an op in this VM.
- */
-void discard(nvm_t *virtual_machine);
-
-/*
- * name:        rot_two
- * description: swaps the two top-most values on stack
- */
-void rot_two(nvm_t *virtual_machine);
-
-/*
- * name:        rot_three
- * description: lifts second and third stack item one position up, moves top
- *              item down to position three
- */
-void rot_three(nvm_t *virtual_machine);
-
-/*
- * name:        binop
- * description: pops a value twice, and performs a binary <operation> on those
- *              operands, and pushes the result
- */
-void binop(nvm_t *virtual_machine, BYTE operation);
-
-/*
- * name:        print_stack
- * description: prints what's left on stack
- */
-void print_stack(nvm_t *virtual_machine);
-
-/*
- * name:        is_empty
- * description: return `true` if the stack is empty, otherwise `false`
- */
-bool is_empty(nvm_t *virtual_machine);
-
-/*
  * name:        nvm_init
  * description: creates a new `nvm_t` object, and return pointer to it
  * parameter:   filename - name of a file into which the bytecode will be

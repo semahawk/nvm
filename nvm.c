@@ -33,7 +33,21 @@
  *
  */
 
-inline void push(nvm_t *vm, INT value)
+/* {{{ static funtion declarations */
+static void push(nvm_t *virtual_machine, int value);
+static int pop(nvm_t *virtual_machine);
+static void discard(nvm_t *virtual_machine);
+static void rot_two(nvm_t *virtual_machine);
+static void rot_three(nvm_t *virtual_machine);
+static void binop(nvm_t *virtual_machine, BYTE operation);
+void print_stack(nvm_t *virtual_machine);
+/* }}} */
+
+/*
+ * name:        push
+ * description: pushes given <value> to the stack
+ */
+static void push(nvm_t *vm, INT value)
 {
   /* {{{ push body */
   if (vm->stack_ptr >= STACK_SIZE){
@@ -46,21 +60,36 @@ inline void push(nvm_t *vm, INT value)
   /* }}} */
 }
 
-inline INT pop(nvm_t *vm)
+/*
+ * name:        pop
+ * description: returns the top-most value from the stack, and reduces it's size
+ */
+static INT pop(nvm_t *vm)
 {
   /* {{{ pop body */
   return vm->stack[--vm->stack_ptr];
   /* }}} */
 }
 
-inline void discard(nvm_t *vm)
+/*
+ * name:        discard
+ * description: changes the top-most value on the stack to 0, and reduces stack's size
+ *
+ *              It differs from `pop` in that it doesn't return anything, and
+ *              it's an op in this VM.
+ */
+static void discard(nvm_t *vm)
 {
   /* {{{ discard body */
   vm->stack[vm->stack_ptr--] = 0;
   /* }}} */
 }
 
-inline void rot_two(nvm_t *vm)
+/*
+ * name:        rot_two
+ * description: swaps the two top-most values on stack
+ */
+static void rot_two(nvm_t *vm)
 {
   /* {{{ rot_two body */
   /* First on Stack */
@@ -73,7 +102,12 @@ inline void rot_two(nvm_t *vm)
   /* }}} */
 }
 
-inline void rot_three(nvm_t *vm)
+/*
+ * name:        rot_three
+ * description: lifts second and third stack item one position up, moves top
+ *              item down to position three
+ */
+static void rot_three(nvm_t *vm)
 {
   /* {{{ rot_three body */
   INT FOS = pop(vm);
@@ -86,7 +120,12 @@ inline void rot_three(nvm_t *vm)
   /* }}} */
 }
 
-inline void binop(nvm_t *vm, BYTE op){
+/*
+ * name:        binop
+ * description: pops a value twice, and performs a binary <operation> on those
+ *              operands, and pushes the result
+ */
+static void binop(nvm_t *vm, BYTE op){
   /* {{{ binop body */
   INT FOS = pop(vm);
   INT SOS = pop(vm);
@@ -111,13 +150,10 @@ inline void binop(nvm_t *vm, BYTE op){
   /* }}} */
 }
 
-bool is_empty(nvm_t *vm)
-{
-  /* {{{ is_empty body */
-  return vm->stack_ptr == 0 ? true : false;
-  /* }}} */
-}
-
+/*
+ * name:        print_stack
+ * description: prints what's left on stack
+ */
 void print_stack(nvm_t *vm)
 {
   /* {{{ print_stack body */
@@ -272,6 +308,6 @@ int nvm_blastoff(nvm_t *vm)
 }
 
 /*
- * Avantasia, Edguy, Iron Savior, Michael Schenker Group
+ * Rhapsody of Fire, Avantasia, Edguy, Iron Savior, Michael Schenker Group
  *
  */

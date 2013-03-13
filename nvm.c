@@ -34,13 +34,12 @@
  */
 
 /* {{{ static funtion declarations */
-static void push(nvm_t *virtual_machine, int value);
-static int pop(nvm_t *virtual_machine);
+static void push(nvm_t *virtual_machine, INT value);
+static INT pop(nvm_t *virtual_machine);
 static void discard(nvm_t *virtual_machine);
 static void rot_two(nvm_t *virtual_machine);
 static void rot_three(nvm_t *virtual_machine);
 static void binop(nvm_t *virtual_machine, BYTE operation);
-void print_stack(nvm_t *virtual_machine);
 /* }}} */
 
 /*
@@ -150,11 +149,7 @@ static void binop(nvm_t *vm, BYTE op){
   /* }}} */
 }
 
-/*
- * name:        print_stack
- * description: prints what's left on stack
- */
-void print_stack(nvm_t *vm)
+void nvm_print_stack(nvm_t *vm)
 {
   /* {{{ print_stack body */
   unsigned i;
@@ -299,8 +294,6 @@ int nvm_blastoff(nvm_t *vm)
     }
   }
 
-  print_stack(vm);
-
   fclose(f);
 
   return 0;
@@ -309,5 +302,7 @@ int nvm_blastoff(nvm_t *vm)
 
 /*
  * Rhapsody of Fire, Avantasia, Edguy, Iron Savior, Michael Schenker Group
+ *
+ * The Office, Family Guy
  *
  */

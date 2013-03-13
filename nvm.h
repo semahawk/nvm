@@ -21,6 +21,8 @@
  * overflow.
  */
 #define STACK_SIZE 10
+/* Variables stack max size */
+#define VARS_STACK_SIZE 10
 
 /*
  * Used for verbosity/debugging purposes.
@@ -41,10 +43,18 @@
 #define ROT_THREE  0x08
 
 /*
- * Some handy defines.
+ * Some handy types.
  */
-#define BYTE unsigned char
-#define INT  int32_t
+typedef unsigned char BYTE;
+typedef int32_t INT;
+
+/*
+ * NVM type for its variables.
+ */
+typedef struct {
+  char *name;
+  INT value;
+} nvm_var;
 
 /*
  * The main type for NVM.
@@ -52,6 +62,7 @@
 typedef struct {
   const char *filename;
   int stack[STACK_SIZE];
+  nvm_var vars[VARS_STACK_SIZE];
   unsigned stack_ptr;
 } nvm_t;
 
@@ -79,6 +90,12 @@ int nvm_blastoff(nvm_t *vm);
  *              freeing the malloced pointer)
  */
 void nvm_destroy(nvm_t *virtual_machine);
+
+/*
+ * name:        nvm_print_stack
+ * description: prints what's left on stack
+ */
+void nvm_print_stack(nvm_t *virtual_machine);
 
 /* Lemon stuff */
 void *ParseAlloc(void *(*)(size_t));

@@ -69,12 +69,13 @@ typedef struct {
 /*
  * name:        nvm_init
  * description: creates a new `nvm_t` object, and return pointer to it
- * parameter:   filename - name of a file into which the bytecode will be
- *              printed and from which the bytecode will be extracted in order
- *              to execute the operations.
+ * parameter:   malloccer - pointer to a function that would allocate the needed stuff.
+ *              filename - name of a file into which the bytecode will be
+ *                         printed and from which the bytecode will be extracted in order
+ *                         to execute the operations.
  * return:      pointer to a new malloced object or NULL if malloc failed
  */
-nvm_t *nvm_init(const char *filename);
+nvm_t *nvm_init(void *(*malloccer)(size_t), const char *filename);
 
 /*
  * name:        nvm_blastoff

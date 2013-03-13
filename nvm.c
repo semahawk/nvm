@@ -160,10 +160,10 @@ void nvm_print_stack(nvm_t *vm)
   /* }}} */
 }
 
-nvm_t *nvm_init(const char *filename)
+nvm_t *nvm_init(void *(*fn)(size_t), const char *filename)
 {
   /* {{{ nvm_init body */
-  nvm_t *vm = malloc(sizeof(nvm_t));
+  nvm_t *vm = fn(sizeof(nvm_t));
 
   if (!vm){
     return NULL;

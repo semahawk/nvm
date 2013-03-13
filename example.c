@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
   }
 
   /* init the VM */
-  nvm_t *vm = nvm_init("bytecode.nc");
+  nvm_t *vm = nvm_init(malloc, "bytecode.nc");
 
   if (!vm){
     fprintf(stderr, "error with initializing the VM :C\n");

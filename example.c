@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
   /* print what's on the stack */
   nvm_print_stack(vm);
   /* clean after yourself */
-  nvm_destroy(vm);
+  nvm_destroy(free, vm);
 
   return 0;
 }

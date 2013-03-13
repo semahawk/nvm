@@ -89,8 +89,10 @@ int nvm_blastoff(nvm_t *vm);
  * name:        nvm_destroy
  * description: cleans up after everything (which includes fclosing the file and
  *              freeing the malloced pointer)
+ * parameter:   freeer - pointer to a function that would 'free' the allocced
+ *                       data NVM used.
  */
-void nvm_destroy(nvm_t *virtual_machine);
+void nvm_destroy(void (*freeer)(void *), nvm_t *virtual_machine);
 
 /*
  * name:        nvm_print_stack

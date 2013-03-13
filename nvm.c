@@ -176,10 +176,10 @@ nvm_t *nvm_init(void *(*fn)(size_t), const char *filename)
   /* }}} */
 }
 
-void nvm_destroy(nvm_t *vm)
+void nvm_destroy(void (*fn)(void *), nvm_t *vm)
 {
   /* {{{ nvm_destroy body */
-  free(vm);
+  fn(vm);
   /* }}} */
 }
 

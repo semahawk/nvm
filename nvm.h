@@ -42,6 +42,7 @@
 #define ROT_TWO    0x07
 #define ROT_THREE  0x08
 #define STORE      0x09
+#define DUP        0x0A
 
 /*
  * Some handy types.

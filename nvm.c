@@ -134,6 +134,21 @@ static void store(nvm_t *vm, char *name)
 }
 
 /*
+ * name:        dup
+ * description: duplicates the top-most value on the stack (adds to the stack
+ *              the same what already is the top-most value)
+ */
+static void dup(nvm_t *vm)
+{
+  /* {{{ dup body */
+  INT FOS = pop(vm);
+
+  push(vm, FOS);
+  push(vm, FOS);
+  /* }}} */
+}
+
+/*
  * name:        binop
  * description: pops a value twice, and performs a binary <operation> on those
  *              operands, and pushes the result
@@ -305,6 +320,12 @@ int nvm_blastoff(nvm_t *vm)
         printf("%04x: store %s\n", pc, string);
 #endif
         store(vm, string);
+        break;
+      case DUP:
+#if VERBOSE
+        printf("%04x: dup\n", pc);
+#endif
+        dup(vm);
         break;
       case BINARY_ADD:
 #if VERBOSE

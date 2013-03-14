@@ -120,6 +120,20 @@ static void rot_three(nvm_t *vm)
 }
 
 /*
+ * name:        store
+ * description: stores a variable of a given <name>
+ */
+static void store(nvm_t *vm, char *name)
+{
+  /* {{{ store body */
+  INT FOS = pop(vm);
+
+  vm->vars[vm->vars_ptr++].name = name;
+  vm->vars[vm->vars_ptr++].value = FOS;
+  /* }}}  */
+}
+
+/*
  * name:        binop
  * description: pops a value twice, and performs a binary <operation> on those
  *              operands, and pushes the result
@@ -170,6 +184,7 @@ nvm_t *nvm_init(void *(*fn)(size_t), const char *filename)
   }
 
   vm->filename = filename;
+  vm->vars_ptr = 0;
   vm->stack_ptr = 0;
 
   return vm;
@@ -260,6 +275,36 @@ int nvm_blastoff(nvm_t *vm)
         printf("%04x: rot_three\n", pc);
 #endif
         rot_three(vm);
+        break;
+      case STORE:
+        /* I don't want to declare any additional variables, so I'm using
+         * 'byte_one', but calling it 'length' makes more sense */
+#define length byte_one
+
+        length = bytes[++i];
+        char *string = malloc(length);
+
+        if (!string){
+          fprintf(stderr, "malloc: failed to allocate %d bytes.\n", length);
+          return 2;
+        }
+
+        /* skip over the length byte */
+        i++;
+        int j;
+        /* getting the variables name, iterating through the <length> next
+         * numbers */
+        for (j = 0; j < length; j++){
+          string[j] = bytes[i + j];
+        }
+        /* skip over the bytes */
+        i += length;
+
+#undef length
+#if VERBOSE
+        printf("%04x: store %s\n", pc, string);
+#endif
+        store(vm, string);
         break;
       case BINARY_ADD:
 #if VERBOSE

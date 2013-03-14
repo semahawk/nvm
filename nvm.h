@@ -22,7 +22,7 @@
  */
 #define STACK_SIZE 10
 /* Variables stack max size */
-#define VARS_STACK_SIZE 10
+#define VARS_STACK_SIZE 30
 
 /*
  * Used for verbosity/debugging purposes.
@@ -41,6 +41,7 @@
 #define BINARY_DIV 0x06
 #define ROT_TWO    0x07
 #define ROT_THREE  0x08
+#define STORE      0x09
 
 /*
  * Some handy types.
@@ -63,16 +64,21 @@ typedef struct {
   const char *filename;
   int stack[STACK_SIZE];
   nvm_var vars[VARS_STACK_SIZE];
+  unsigned vars_ptr;
   unsigned stack_ptr;
 } nvm_t;
 
 /*
  * name:        nvm_init
- * description: creates a new `nvm_t` object, and return pointer to it
- * parameter:   malloccer - pointer to a function that would allocate the needed stuff.
- *              filename - name of a file into which the bytecode will be
- *                         printed and from which the bytecode will be extracted in order
- *                         to execute the operations.
+ * description: creates a new `nvm_t` object, and returns pointer to it
+ *
+ * parameters:
+ *
+ *   malloccer: pointer to a function that would allocate the needed stuff.
+ *    filename: name of a file into which the bytecode will be
+ *              printed and from which the bytecode will be extracted in order
+ *              to execute the operations.
+ *
  * return:      pointer to a new malloced object or NULL if malloc failed
  */
 nvm_t *nvm_init(void *(*malloccer)(size_t), const char *filename);

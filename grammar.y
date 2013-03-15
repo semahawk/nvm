@@ -7,19 +7,22 @@
 
 %token_type { int }
 
-%left PLUS MINUS.
-%left TIMES DIVIDE.
-%left LPAREN.
+%right EQ.
+%left  PLUS MINUS.
+%left  TIMES DIVIDE.
+%left  LPAREN.
 
 %include {
   #include <assert.h>
   #include <stdlib.h>
   #include <stdint.h>
+  #include <string.h>
 
   #include "nvm.h"
 
   void write_push(int);
   void write_binop(BYTE);
+  void write_store(BYTE, char *);
 
   static uint16_t pc = 0;
 
@@ -38,10 +41,14 @@
   /* NULL */
 }
 
-source ::= expr .
-{
-}
+source ::= stmts . {}
 
+stmts ::= expr . {}
+stmts ::= stmts SEMICOLON expr . {}
+
+expr ::= ABC EQ expr . {
+  write_store(STORE, "abc");
+}
 expr ::= expr PLUS expr. {
   write_binop(BINARY_ADD);
 }
@@ -75,6 +82,15 @@ expr(res) ::= LPAREN expr(inside) RPAREN. {
   void write_binop(BYTE op){
     fwrite(&pc, sizeof(pc), 1, fp);
     fwrite(&op, sizeof(op), 1, fp);
+    pc++;
+  }
+
+  void write_store(BYTE op, char *name){
+    size_t size = strlen(name);
+    fwrite(&pc, sizeof(pc), 1, fp);
+    fwrite(&op, sizeof(op), 1, fp);
+    fwrite(&size, sizeof(unsigned char), 1, fp);
+    fwrite(name, strlen(name) * sizeof(char), 1, fp);
     pc++;
   }
 }

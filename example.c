@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
   /* don't complain about unused variable */
   (void)argc;
 
-  if (!strcmp(argv[0], "--write")){
+  if (argc > 1 && !strcmp(argv[1], "--write")){
     /* opening the testing file */
     fp = fopen("bytecode.nc", "wb");
     /* writing version numbers */
@@ -39,7 +39,8 @@ int main(int argc, char *argv[])
 
     void *parser = ParseAlloc(malloc);
 
-    /* input: (2 + 2) * 2 / 4 * (10 + 4) + 9 */
+    /* input: (2 + 2) * 2 / 4 * (10 + 4) + 9; */
+    /*        abc = 2 + 2; */
     Parse(parser, LPAREN, 0);
     Parse(parser, NUMBER, 2);
     Parse(parser, PLUS, 0);
@@ -57,6 +58,13 @@ int main(int argc, char *argv[])
     Parse(parser, RPAREN, 0);
     Parse(parser, PLUS, 0);
     Parse(parser, NUMBER, 9);
+    Parse(parser, SEMICOLON, 0);
+    Parse(parser, ABC, 0);
+    Parse(parser, EQ, 0);
+    Parse(parser, NUMBER, 2);
+    Parse(parser, PLUS, 0);
+    Parse(parser, NUMBER, 2);
+    Parse(parser, SEMICOLON, 0);
     Parse(parser, 0, 0);
     fclose(fp);
     ParseFree(parser, free);

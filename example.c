@@ -51,35 +51,27 @@ int main(int argc, char *argv[])
 
     /* input:
      *
-     *   b = 6 + 4 + 59;
-     *   a = 4 + 51;
+     *   a = 7;
+     *   b = a - 3;
      */
     TokenType token;
-    token.s = "b";
-    Parse(parser, STRING, token);
-    token.i = 0;
-    Parse(parser, EQ, token);
-    token.i = 6;
-    Parse(parser, NUMBER, token);
-    token.i = 0;
-    Parse(parser, PLUS, token);
-    token.i = 4;
-    Parse(parser, NUMBER, token);
-    token.i = 0;
-    Parse(parser, PLUS, token);
-    token.i = 59;
-    Parse(parser, NUMBER, token);
-    token.i = 0;
-    Parse(parser, SEMICOLON, token);
     token.s = "a";
     Parse(parser, STRING, token);
     token.i = 0;
     Parse(parser, EQ, token);
-    token.i = 4;
+    token.i = 7;
     Parse(parser, NUMBER, token);
     token.i = 0;
-    Parse(parser, PLUS, token);
-    token.i = 51;
+    Parse(parser, SEMICOLON, token);
+    token.s = "b";
+    Parse(parser, STRING, token);
+    token.i = 0;
+    Parse(parser, EQ, token);
+    token.s = "a";
+    Parse(parser, STRING, token);
+    token.i = 0;
+    Parse(parser, MINUS, token);
+    token.i = 3;
     Parse(parser, NUMBER, token);
     token.i = 0;
     Parse(parser, SEMICOLON, token);

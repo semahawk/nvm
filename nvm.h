@@ -42,7 +42,8 @@
 #define ROT_TWO    0x07
 #define ROT_THREE  0x08
 #define STORE      0x09
-#define DUP        0x0A
+#define GET        0x0A
+#define DUP        0x0B
 
 /*
  * Some handy types.
@@ -106,10 +107,5 @@ void nvm_destroy(void (*freeer)(void *), nvm_t *virtual_machine);
  * description: prints what's left on stack
  */
 void nvm_print_stack(nvm_t *virtual_machine);
-
-/* Lemon stuff */
-void *ParseAlloc(void *(*)(size_t));
-void  Parse(void *, int, int);
-void  ParseFree(void *, void (*)(void*));
 
 #endif /* NVM_H */

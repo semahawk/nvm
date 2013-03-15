@@ -5,7 +5,10 @@
  *
  */
 
-%token_type { int }
+%token_type { TokenType }
+
+%type NUMBER { TokenType }
+%type STRING { TokenType }
 
 %right EQ.
 %left  PLUS MINUS.
@@ -23,6 +26,12 @@
   void write_push(int);
   void write_binop(BYTE);
   void write_store(BYTE, char *);
+  void write_get(BYTE, char *);
+
+  typedef union {
+    int i;
+    char *s;
+  } TokenType;
 
   static uint16_t pc = 0;
 
@@ -46,8 +55,8 @@ source ::= stmts . {}
 stmts ::= expr . {}
 stmts ::= stmts SEMICOLON expr . {}
 
-expr ::= ABC EQ expr . {
-  write_store(STORE, "abc");
+expr ::= STRING(name) EQ expr . {
+  write_store(STORE, name.s);
 }
 expr ::= expr PLUS expr. {
   write_binop(BINARY_ADD);
@@ -64,7 +73,10 @@ expr ::= expr DIVIDE expr. {
   write_binop(BINARY_DIV);
 }
 expr ::= NUMBER(number). {
-  write_push(number);
+  write_push(number.i);
+}
+expr ::= STRING(var). {
+  write_get(GET, var.s);
 }
 expr(res) ::= LPAREN expr(inside) RPAREN. {
   res = inside;
@@ -86,6 +98,15 @@ expr(res) ::= LPAREN expr(inside) RPAREN. {
   }
 
   void write_store(BYTE op, char *name){
+    size_t size = strlen(name);
+    fwrite(&pc, sizeof(pc), 1, fp);
+    fwrite(&op, sizeof(op), 1, fp);
+    fwrite(&size, sizeof(unsigned char), 1, fp);
+    fwrite(name, strlen(name) * sizeof(char), 1, fp);
+    pc++;
+  }
+
+  void write_get(BYTE op, char *name){
     size_t size = strlen(name);
     fwrite(&pc, sizeof(pc), 1, fp);
     fwrite(&op, sizeof(op), 1, fp);

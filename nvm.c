@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdint.h>
+#include <string.h>
 #include <sys/stat.h>
 
 #include "nvm.h"
@@ -40,6 +41,7 @@ static void discard(nvm_t *virtual_machine);
 static void rot_two(nvm_t *virtual_machine);
 static void rot_three(nvm_t *virtual_machine);
 static void binop(nvm_t *virtual_machine, BYTE operation);
+static char *strdup(const char *p);
 /* }}} */
 
 /*
@@ -128,15 +130,31 @@ static void store(nvm_t *vm, char *name)
   /* {{{ store body */
   INT FOS = pop(vm);
 
-  vm->vars[vm->vars_ptr++].name = name;
-  vm->vars[vm->vars_ptr++].value = FOS;
+  vm->vars[vm->vars_ptr].name = name;
+  vm->vars[vm->vars_ptr].value = FOS;
+  vm->vars_ptr++;
+  /* }}}  */
+}
+
+/*
+ * name:        get
+ * description: pushes a value of a given variables <name> to the stack
+ */
+static void get(nvm_t *vm, char *name)
+{
+  /* {{{ get body */
+  for (unsigned i = 0; i < vm->vars_ptr; i++){
+    if (!strcmp(vm->vars[i].name, name)){
+      push(vm, vm->vars[i].value);
+      return;
+    }
+  }
   /* }}}  */
 }
 
 /*
  * name:        dup
- * description: duplicates the top-most value on the stack (adds to the stack
- *              the same what already is the top-most value)
+ * description: duplicates the FOS
  */
 static void dup(nvm_t *vm)
 {
@@ -233,6 +251,10 @@ int nvm_blastoff(nvm_t *vm)
   INT value;
   /* program counter */
   uint16_t pc;
+  /* used to retrieve variables names */
+  char *string = NULL;
+  /* additional counter (it's here because GCC complains about redefining it) */
+  int j = 0;
 
 #if VERBOSE
   printf("## using NVM version %u.%u.%u ##\n\n", bytes[0], bytes[1], bytes[2]);
@@ -297,7 +319,7 @@ int nvm_blastoff(nvm_t *vm)
 #define length byte_one
 
         length = bytes[++i];
-        char *string = malloc(length);
+        string = malloc(length);
 
         if (!string){
           fprintf(stderr, "malloc: failed to allocate %d bytes.\n", length);
@@ -306,20 +328,50 @@ int nvm_blastoff(nvm_t *vm)
 
         /* skip over the length byte */
         i++;
-        int j;
         /* getting the variables name, iterating through the <length> next
          * numbers */
         for (j = 0; j < length; j++){
           string[j] = bytes[i + j];
         }
         /* skip over the bytes */
-        i += length;
+        i += length - 1;
 
 #undef length
 #if VERBOSE
         printf("%04x: store %s\n", pc, string);
 #endif
-        store(vm, string);
+        store(vm, strdup(string));
+        free(string);
+        string = NULL;
+        break;
+      case GET:
+        /* Some trick over here */
+#define length byte_one
+        length = bytes[++i];
+        string = malloc(length);
+
+        if (!string){
+          fprintf(stderr, "malloc: failed to allocate %d bytes.\n", length);
+          return 2;
+        }
+
+        /* skip over the length byte */
+        i++;
+        /* getting the variables name, iterating through the <length> next
+         * numbers */
+        for (j = 0; j < length; j++){
+          string[j] = bytes[i + j];
+        }
+        /* skip over the bytes */
+        i += length - 1;
+
+#if VERBOSE
+        printf("%04x: get %s\n", pc, string);
+#endif
+#undef length
+        get(vm, strdup(string));
+        free(string);
+        string = NULL;
         break;
       case DUP:
 #if VERBOSE
@@ -363,6 +415,15 @@ int nvm_blastoff(nvm_t *vm)
   fclose(f);
 
   return 0;
+  /* }}} */
+}
+
+static char *strdup(const char *p)
+{
+  /* {{{ strdup body */
+  char *np = malloc(strlen(p) + 1);
+
+  return np ? strcpy(np, p) : np;
   /* }}} */
 }
 

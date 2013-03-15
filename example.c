@@ -19,6 +19,16 @@
 
 FILE *fp;
 
+typedef union {
+  int i;
+  char *s;
+} TokenType;
+
+/* Lemon stuff */
+void *ParseAlloc(void *(*)(size_t));
+void  Parse(void *, int, TokenType);
+void  ParseFree(void *, void (*)(void*));
+
 int main(int argc, char *argv[])
 {
   /* don't complain about unused variable */
@@ -39,33 +49,43 @@ int main(int argc, char *argv[])
 
     void *parser = ParseAlloc(malloc);
 
-    /* input: (2 + 2) * 2 / 4 * (10 + 4) + 9; */
-    /*        abc = 2 + 2; */
-    Parse(parser, LPAREN, 0);
-    Parse(parser, NUMBER, 2);
-    Parse(parser, PLUS, 0);
-    Parse(parser, NUMBER, 2);
-    Parse(parser, RPAREN, 0);
-    Parse(parser, TIMES, 0);
-    Parse(parser, NUMBER, 2);
-    Parse(parser, DIVIDE, 0);
-    Parse(parser, NUMBER, 4);
-    Parse(parser, TIMES, 0);
-    Parse(parser, LPAREN, 0);
-    Parse(parser, NUMBER, 10);
-    Parse(parser, PLUS, 0);
-    Parse(parser, NUMBER, 4);
-    Parse(parser, RPAREN, 0);
-    Parse(parser, PLUS, 0);
-    Parse(parser, NUMBER, 9);
-    Parse(parser, SEMICOLON, 0);
-    Parse(parser, ABC, 0);
-    Parse(parser, EQ, 0);
-    Parse(parser, NUMBER, 2);
-    Parse(parser, PLUS, 0);
-    Parse(parser, NUMBER, 2);
-    Parse(parser, SEMICOLON, 0);
-    Parse(parser, 0, 0);
+    /* input:
+     *
+     *   b = 6 + 4 + 59;
+     *   a = 4 + 51;
+     */
+    TokenType token;
+    token.s = "b";
+    Parse(parser, STRING, token);
+    token.i = 0;
+    Parse(parser, EQ, token);
+    token.i = 6;
+    Parse(parser, NUMBER, token);
+    token.i = 0;
+    Parse(parser, PLUS, token);
+    token.i = 4;
+    Parse(parser, NUMBER, token);
+    token.i = 0;
+    Parse(parser, PLUS, token);
+    token.i = 59;
+    Parse(parser, NUMBER, token);
+    token.i = 0;
+    Parse(parser, SEMICOLON, token);
+    token.s = "a";
+    Parse(parser, STRING, token);
+    token.i = 0;
+    Parse(parser, EQ, token);
+    token.i = 4;
+    Parse(parser, NUMBER, token);
+    token.i = 0;
+    Parse(parser, PLUS, token);
+    token.i = 51;
+    Parse(parser, NUMBER, token);
+    token.i = 0;
+    Parse(parser, SEMICOLON, token);
+    /* finish parsing */
+    token.i = 0;
+    Parse(parser, 0, token);
     fclose(fp);
     ParseFree(parser, free);
   }

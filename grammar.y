@@ -76,7 +76,7 @@ expr ::= NUMBER(number). {
   write_push(number.i);
 }
 expr ::= STRING(var). {
-  write_get(GET, var.s);
+  write_get(LOAD_NAME, var.s);
 }
 expr(res) ::= LPAREN expr(inside) RPAREN. {
   res = inside;
@@ -84,7 +84,7 @@ expr(res) ::= LPAREN expr(inside) RPAREN. {
 
 %code {
   void write_push(int value){
-    BYTE op = PUSH;
+    BYTE op = LOAD_CONST;
     fwrite(&pc, sizeof(pc), 1, fp);
     fwrite(&op, sizeof(op), 1, fp);
     fwrite(&value, sizeof(value), 1, fp);

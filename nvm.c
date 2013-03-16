@@ -35,22 +35,23 @@
  */
 
 /* {{{ static funtion declarations */
-static void push(nvm_t *virtual_machine, INT value);
+static void load_const(nvm_t *virtual_machine, INT value);
 static INT pop(nvm_t *virtual_machine);
 static void discard(nvm_t *virtual_machine);
 static void rot_two(nvm_t *virtual_machine);
 static void rot_three(nvm_t *virtual_machine);
 static void binop(nvm_t *virtual_machine, BYTE operation);
+static void load_name(nvm_t *virtual_machine, char *name);
 static char *strdup(const char *p);
 /* }}} */
 
 /*
- * name:        push
+ * name:        load_const
  * description: pushes given <value> to the stack
  */
-static void push(nvm_t *vm, INT value)
+static void load_const(nvm_t *vm, INT value)
 {
-  /* {{{ push body */
+  /* {{{ load_const body */
   if (vm->stack_ptr >= STACK_SIZE){
     /* TODO: extend the stack */
     fprintf(stderr, "stack overflow!\n");
@@ -98,8 +99,8 @@ static void rot_two(nvm_t *vm)
   /* Second on Stack */
   INT SOS = pop(vm);
 
-  push(vm, FOS);
-  push(vm, SOS);
+  load_const(vm, FOS);
+  load_const(vm, SOS);
   /* }}} */
 }
 
@@ -115,9 +116,9 @@ static void rot_three(nvm_t *vm)
   INT SOS = pop(vm);
   INT TOS = pop(vm);
 
-  push(vm, FOS);
-  push(vm, TOS);
-  push(vm, SOS);
+  load_const(vm, FOS);
+  load_const(vm, TOS);
+  load_const(vm, SOS);
   /* }}} */
 }
 
@@ -137,15 +138,15 @@ static void store(nvm_t *vm, char *name)
 }
 
 /*
- * name:        get
+ * name:        load_name
  * description: pushes a value of a given variables <name> to the stack
  */
-static void get(nvm_t *vm, char *name)
+static void load_name(nvm_t *vm, char *name)
 {
-  /* {{{ get body */
+  /* {{{ load_name body */
   for (unsigned i = 0; i < vm->vars_ptr; i++){
     if (!strcmp(vm->vars[i].name, name)){
-      push(vm, vm->vars[i].value);
+      load_const(vm, vm->vars[i].value);
       return;
     }
   }
@@ -161,8 +162,8 @@ static void dup(nvm_t *vm)
   /* {{{ dup body */
   INT FOS = pop(vm);
 
-  push(vm, FOS);
-  push(vm, FOS);
+  load_const(vm, FOS);
+  load_const(vm, FOS);
   /* }}} */
 }
 
@@ -192,7 +193,7 @@ static void binop(nvm_t *vm, BYTE op){
       break;
   }
 
-  push(vm, result);
+  load_const(vm, result);
   /* }}} */
 }
 
@@ -278,7 +279,7 @@ int nvm_blastoff(nvm_t *vm)
         printf("%04x: nop\n", pc);
 #endif
         break;
-      case PUSH:
+      case LOAD_CONST:
         /* extract the bytes */
         byte_one   = bytes[i + 1];
         byte_two   = bytes[i + 2] << 2;
@@ -293,7 +294,7 @@ int nvm_blastoff(nvm_t *vm)
         printf("%04x: push %d\n", pc, value);
 #endif
 
-        push(vm, value);
+        load_const(vm, value);
         break;
       case DISCARD:
 #if VERBOSE
@@ -344,7 +345,7 @@ int nvm_blastoff(nvm_t *vm)
         free(string);
         string = NULL;
         break;
-      case GET:
+      case LOAD_NAME:
         /* Some trick over here */
 #define length byte_one
         length = bytes[++i];
@@ -369,7 +370,7 @@ int nvm_blastoff(nvm_t *vm)
         printf("%04x: get %s\n", pc, string);
 #endif
 #undef length
-        get(vm, strdup(string));
+        load_name(vm, strdup(string));
         free(string);
         string = NULL;
         break;

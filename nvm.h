@@ -33,7 +33,7 @@
  * List of opcodes.
  */
 #define NOP        0x00
-#define PUSH       0x01
+#define LOAD_CONST 0x01
 #define DISCARD    0x02
 #define BINARY_ADD 0x03
 #define BINARY_SUB 0x04
@@ -42,7 +42,7 @@
 #define ROT_TWO    0x07
 #define ROT_THREE  0x08
 #define STORE      0x09
-#define GET        0x0A
+#define LOAD_NAME  0x0A
 #define DUP        0x0B
 
 /*

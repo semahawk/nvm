@@ -43,6 +43,7 @@ static void rot_three(nvm_t *virtual_machine);
 static void binop(nvm_t *virtual_machine, BYTE operation);
 static void load_name(nvm_t *virtual_machine, char *name);
 static void prerun(nvm_t *virtual_machine);
+static void call(nvm_t *vm, char *name);
 static char *strdup(const char *p);
 /* }}} */
 
@@ -255,6 +256,39 @@ static void prerun(nvm_t *vm)
   /* }}} */
 }
 
+/*
+ * name:        call
+ * description: calls a function
+ * parameters:  name - name of the function
+ */
+static void call(nvm_t *vm, char *name)
+{
+  /* {{{ call body */
+  unsigned func, i = vm->functions_offset;
+  int found = 0;
+  /* search for the function */
+  for (func = 0; func < vm->funcs_ptr; func++){
+    /* found it */
+    if (!strcmp(name, vm->funcs[func].name)){
+      found = 1;
+      break;
+    }
+  }
+
+  if (!found){
+    printf("function not found\n");
+    return;
+  }
+
+  /* obtain the opcodes for the function */
+  for (i += vm->funcs[func].offset; vm->bytes[i] != FN_END; i++){
+    /* every loop under vm->bytes[i] there is next opcode */
+    printf("%02X ", vm->bytes[i]);
+  }
+  printf("\n");
+  /* }}} */
+}
+
 nvm_t *nvm_init(void *(*fn)(size_t), const char *filename)
 {
   /* {{{ nvm_init body */
@@ -346,7 +380,7 @@ int nvm_blastoff(nvm_t *vm)
         i += 4;
 
 #if VERBOSE
-        printf("%04x: push %d\n", pc, value);
+        printf("%04x: push (%d)\n", pc, value);
 #endif
 
         load_const(vm, value);
@@ -394,7 +428,7 @@ int nvm_blastoff(nvm_t *vm)
 
 #undef length
 #if VERBOSE
-        printf("%04x: store %s\n", pc, string);
+        printf("%04x: store (%s)\n", pc, string);
 #endif
         store(vm, strdup(string));
         free(string);
@@ -422,7 +456,7 @@ int nvm_blastoff(nvm_t *vm)
         i += length - 1;
 
 #if VERBOSE
-        printf("%04x: get %s\n", pc, string);
+        printf("%04x: get (%s)\n", pc, string);
 #endif
 #undef length
         load_name(vm, strdup(string));
@@ -458,6 +492,22 @@ int nvm_blastoff(nvm_t *vm)
         printf("%04x: div\n", pc);
 #endif
         binop(vm, vm->bytes[i]);
+        break;
+      case CALL:
+#define length byte_one
+        length = vm->bytes[++i];
+        string = malloc(length);
+        /* skip over the length byte */
+        i++;
+        /* get the name */
+        for (j = 0; j < length; j++){
+          string[j] = vm->bytes[i + j];
+        }
+        printf("%04x: call (%s)\n", pc, string);
+        i += length + 1;
+#undef  length
+        call(vm, strdup(string));
+        free(string);
         break;
       default:
         printf("%04x: error: unknown op: %d (%08X)\n", pc, vm->bytes[i], vm->bytes[i]);

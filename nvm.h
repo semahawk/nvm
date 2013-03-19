@@ -49,6 +49,7 @@
 #define DUP        0x0B
 #define FN_START   0x0C
 #define FN_END     0x0D
+#define CALL       0x0E
 #define BEGIN_FN   0xBF
 
 /*

@@ -42,6 +42,7 @@ static void rot_two(nvm_t *virtual_machine);
 static void rot_three(nvm_t *virtual_machine);
 static void binop(nvm_t *virtual_machine, BYTE operation);
 static void load_name(nvm_t *virtual_machine, char *name);
+static void prerun(nvm_t *virtual_machine);
 static char *strdup(const char *p);
 /* }}} */
 
@@ -208,6 +209,52 @@ void nvm_print_stack(nvm_t *vm)
   /* }}} */
 }
 
+/*
+ * name:        prerun
+ * description: mainly used to search for functions and store them before
+ *              running the bytecode (later it would probably also check for
+ *              codes validity and some other stuff)
+ */
+static void prerun(nvm_t *vm)
+{
+  /* {{{ prerun body */
+  char *name;
+  int i, j;
+  BYTE length;
+  /* search for the BF (Begin Functions) byte */
+  for (i = 0; i < vm->bytes_count; i++){
+    if (vm->bytes[i] == BEGIN_FN){
+      /* found it */
+      vm->functions_offset = i;
+      break;
+    }
+  }
+
+  /* start from 1 to skip over the BF byte */
+  for (i = 1; i < vm->bytes_count - vm->functions_offset; i++){
+#define off i + vm->functions_offset
+    if (vm->bytes[off] == FN_START){
+      /* skip over FN_START */
+      i++;
+      length = vm->bytes[off];
+      name = malloc(length);
+      /* skip over the length */
+      i++;
+      /* get the name */
+      for (j = 0; j < length; j++){
+        name[j] = vm->bytes[off + j];
+        vm->funcs[vm->funcs_ptr].name = name;
+        vm->funcs[vm->funcs_ptr].offset = i + length;
+      }
+      vm->funcs_ptr++;
+    }
+    /* skip over the bytes */
+    i += length + 1;
+#undef off
+  }
+  /* }}} */
+}
+
 nvm_t *nvm_init(void *(*fn)(size_t), const char *filename)
 {
   /* {{{ nvm_init body */
@@ -217,10 +264,11 @@ nvm_t *nvm_init(void *(*fn)(size_t), const char *filename)
     return NULL;
   }
 
-  vm->filename  = filename;
-  vm->bytes     = NULL;
-  vm->vars_ptr  = 0;
-  vm->stack_ptr = 0;
+  vm->filename         = filename;
+  vm->bytes            = NULL;
+  vm->vars_ptr         = 0;
+  vm->stack_ptr        = 0;
+  vm->functions_offset = -1;
 
   return vm;
   /* }}} */
@@ -229,6 +277,7 @@ nvm_t *nvm_init(void *(*fn)(size_t), const char *filename)
 void nvm_destroy(void (*fn)(void *), nvm_t *vm)
 {
   /* {{{ nvm_destroy body */
+  fn(vm->bytes);
   fn(vm);
   /* }}} */
 }
@@ -243,8 +292,12 @@ int nvm_blastoff(nvm_t *vm)
   stat(vm->filename, &st);
   /* setting VMs bytes */
   vm->bytes = malloc(st.st_size);
+  vm->bytes_count = st.st_size;
   /* fetch the file */
   fread(vm->bytes, st.st_size, sizeof(BYTE), f);
+
+  /* start the pre-run (search for functions, store them, etc.) */
+  prerun(vm);
 
   /* an `int` is four bytes, but we're reading one byte at a time */
   BYTE byte_one, byte_two, byte_three, byte_four;
@@ -262,8 +315,9 @@ int nvm_blastoff(nvm_t *vm)
   printf("## using NVM version %u.%u.%u ##\n\n", vm->bytes[0], vm->bytes[1], vm->bytes[2]);
 #endif
 
-  /* we start from 3 to skip over the version */
-  for (int i = 3; i < st.st_size; i++){
+  /* we start from 3 to skip over the version
+     we end   at functions offset */
+  for (int i = 3; i < vm->functions_offset; i++){
     /* extract the bytes */
     byte_one = vm->bytes[i];
     byte_two = vm->bytes[i + 1] << 2;

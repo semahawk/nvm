@@ -8,6 +8,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <sys/types.h>
 
 /*
  * Obviously.
@@ -23,6 +24,8 @@
 #define STACK_SIZE 10
 /* Variables stack max size */
 #define VARS_STACK_SIZE 30
+/* Functions stack max size */
+#define FUNCS_STACK_SIZE 30
 
 /*
  * Used for verbosity/debugging purposes.
@@ -44,6 +47,9 @@
 #define STORE      0x09
 #define LOAD_NAME  0x0A
 #define DUP        0x0B
+#define FN_START   0x0C
+#define FN_END     0x0D
+#define BEGIN_FN   0xBF
 
 /*
  * Some handy types.
@@ -60,6 +66,14 @@ typedef struct {
 } nvm_var;
 
 /*
+ * NVM type for its functions.
+ */
+typedef struct {
+  char *name;
+  unsigned offset;
+} nvm_function;
+
+/*
  * The main type for NVM.
  */
 typedef struct {
@@ -67,14 +81,23 @@ typedef struct {
   const char *filename;
   /* contents of the file */
   BYTE *bytes;
+  /* number of the bytes */
+  off_t bytes_count;
   /* The Stack */
   int stack[STACK_SIZE];
-  /* Variables stack */
-  nvm_var vars[VARS_STACK_SIZE];
-  /* Variables 'pointer' */
-  unsigned vars_ptr;
-  /* Stack 'pointer' */
+  /* stack 'pointer' */
   unsigned stack_ptr;
+  /* variables stack */
+  nvm_var vars[VARS_STACK_SIZE];
+  /* variables 'pointer' */
+  unsigned vars_ptr;
+  /* functions offset (it's not unsigned because I'm using -1 later on for
+     error-like purposes) */
+  int functions_offset;
+  /* functions stack */
+  nvm_function funcs[FUNCS_STACK_SIZE];
+  /* function 'pointer' */
+  unsigned funcs_ptr;
 } nvm_t;
 
 /*

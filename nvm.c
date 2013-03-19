@@ -217,8 +217,9 @@ nvm_t *nvm_init(void *(*fn)(size_t), const char *filename)
     return NULL;
   }
 
-  vm->filename = filename;
-  vm->vars_ptr = 0;
+  vm->filename  = filename;
+  vm->bytes     = NULL;
+  vm->vars_ptr  = 0;
   vm->stack_ptr = 0;
 
   return vm;
@@ -240,10 +241,10 @@ int nvm_blastoff(nvm_t *vm)
   /* get the file size */
   struct stat st;
   stat(vm->filename, &st);
-  /* array of our bytes */
-  BYTE bytes[st.st_size];
+  /* setting VMs bytes */
+  vm->bytes = malloc(st.st_size);
   /* fetch the file */
-  fread(bytes, st.st_size, sizeof(BYTE), f);
+  fread(vm->bytes, st.st_size, sizeof(BYTE), f);
 
   /* an `int` is four bytes, but we're reading one byte at a time */
   BYTE byte_one, byte_two, byte_three, byte_four;
@@ -258,20 +259,20 @@ int nvm_blastoff(nvm_t *vm)
   int j = 0;
 
 #if VERBOSE
-  printf("## using NVM version %u.%u.%u ##\n\n", bytes[0], bytes[1], bytes[2]);
+  printf("## using NVM version %u.%u.%u ##\n\n", vm->bytes[0], vm->bytes[1], vm->bytes[2]);
 #endif
 
   /* we start from 3 to skip over the version */
   for (int i = 3; i < st.st_size; i++){
     /* extract the bytes */
-    byte_one = bytes[i];
-    byte_two = bytes[i + 1] << 2;
+    byte_one = vm->bytes[i];
+    byte_two = vm->bytes[i + 1] << 2;
     /* assemble the final number */
     pc = byte_one ^ byte_two;
     /* skip over the bytes */
     i += 2;
 
-    switch (bytes[i]){
+    switch (vm->bytes[i]){
       /* {{{ main op switch */
       case NOP:
         /* that was tough */
@@ -281,10 +282,10 @@ int nvm_blastoff(nvm_t *vm)
         break;
       case LOAD_CONST:
         /* extract the bytes */
-        byte_one   = bytes[i + 1];
-        byte_two   = bytes[i + 2] << 2;
-        byte_three = bytes[i + 3] << 4;
-        byte_four  = bytes[i + 4] << 6;
+        byte_one   = vm->bytes[i + 1];
+        byte_two   = vm->bytes[i + 2] << 2;
+        byte_three = vm->bytes[i + 3] << 4;
+        byte_four  = vm->bytes[i + 4] << 6;
         /* assemble the final number */
         value = byte_one ^ byte_two ^ byte_three ^ byte_four;
         /* skip over the bytes */
@@ -319,7 +320,7 @@ int nvm_blastoff(nvm_t *vm)
          * 'byte_one', but calling it 'length' makes more sense */
 #define length byte_one
 
-        length = bytes[++i];
+        length = vm->bytes[++i];
         string = malloc(length);
 
         if (!string){
@@ -332,7 +333,7 @@ int nvm_blastoff(nvm_t *vm)
         /* getting the variables name, iterating through the <length> next
          * numbers */
         for (j = 0; j < length; j++){
-          string[j] = bytes[i + j];
+          string[j] = vm->bytes[i + j];
         }
         /* skip over the bytes */
         i += length - 1;
@@ -348,7 +349,7 @@ int nvm_blastoff(nvm_t *vm)
       case LOAD_NAME:
         /* Some trick over here */
 #define length byte_one
-        length = bytes[++i];
+        length = vm->bytes[++i];
         string = malloc(length);
 
         if (!string){
@@ -361,7 +362,7 @@ int nvm_blastoff(nvm_t *vm)
         /* getting the variables name, iterating through the <length> next
          * numbers */
         for (j = 0; j < length; j++){
-          string[j] = bytes[i + j];
+          string[j] = vm->bytes[i + j];
         }
         /* skip over the bytes */
         i += length - 1;
@@ -384,28 +385,28 @@ int nvm_blastoff(nvm_t *vm)
 #if VERBOSE
         printf("%04x: add\n", pc);
 #endif
-        binop(vm, bytes[i]);
+        binop(vm, vm->bytes[i]);
         break;
       case BINARY_SUB:
 #if VERBOSE
         printf("%04x: sub\n", pc);
 #endif
-        binop(vm, bytes[i]);
+        binop(vm, vm->bytes[i]);
         break;
       case BINARY_MUL:
 #if VERBOSE
         printf("%04x: mul\n", pc);
 #endif
-        binop(vm, bytes[i]);
+        binop(vm, vm->bytes[i]);
         break;
       case BINARY_DIV:
 #if VERBOSE
         printf("%04x: div\n", pc);
 #endif
-        binop(vm, bytes[i]);
+        binop(vm, vm->bytes[i]);
         break;
       default:
-        printf("%04x: error: unknown op: %d (%08X)\n", pc, bytes[i], bytes[i]);
+        printf("%04x: error: unknown op: %d (%08X)\n", pc, vm->bytes[i], vm->bytes[i]);
         /* you failed the game */
         return 1;
         break;

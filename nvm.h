@@ -63,10 +63,17 @@ typedef struct {
  * The main type for NVM.
  */
 typedef struct {
+  /* Files name */
   const char *filename;
+  /* contents of the file */
+  BYTE *bytes;
+  /* The Stack */
   int stack[STACK_SIZE];
+  /* Variables stack */
   nvm_var vars[VARS_STACK_SIZE];
+  /* Variables 'pointer' */
   unsigned vars_ptr;
+  /* Stack 'pointer' */
   unsigned stack_ptr;
 } nvm_t;
 

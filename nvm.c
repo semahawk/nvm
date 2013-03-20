@@ -44,6 +44,7 @@ static void binop(nvm_t *virtual_machine, BYTE operation);
 static void load_name(nvm_t *virtual_machine, char *name);
 static void prerun(nvm_t *virtual_machine);
 static void call(nvm_t *vm, char *name);
+static void dispatch(nvm_t *vm);
 static char *strdup(const char *p);
 /* }}} */
 
@@ -333,6 +334,25 @@ int nvm_blastoff(nvm_t *vm)
   /* start the pre-run (search for functions, store them, etc.) */
   prerun(vm);
 
+#if VERBOSE
+  printf("## using NVM version %u.%u.%u ##\n\n", vm->bytes[0], vm->bytes[1], vm->bytes[2]);
+#endif
+
+  /* we start from 3 to skip over the version
+     we end   at functions offset */
+  for (vm->ip = 3; vm->ip < vm->functions_offset; vm->ip++){
+    dispatch(vm);
+  }
+
+  fclose(f);
+
+  return 0;
+  /* }}} */
+}
+
+static void dispatch(nvm_t *vm)
+{
+  /* {{{ dispatch body */
   /* an `int` is four bytes, but we're reading one byte at a time */
   BYTE byte_one, byte_two, byte_three, byte_four;
   /* this is the final number which is a result of connecting the four mentioned
@@ -343,174 +363,162 @@ int nvm_blastoff(nvm_t *vm)
   /* additional counter (it's here because GCC complains about redefining it) */
   int j = 0;
 
+  switch (vm->bytes[vm->ip]){
+    /* {{{ main op switch */
+    case NOP:
+      /* that was tough */
 #if VERBOSE
-  printf("## using NVM version %u.%u.%u ##\n\n", vm->bytes[0], vm->bytes[1], vm->bytes[2]);
+      printf("%04x: nop\n", vm->ip);
 #endif
-
-  /* we start from 3 to skip over the version
-     we end   at functions offset */
-  for (vm->ip = 3; vm->ip < vm->functions_offset; vm->ip++){
-    switch (vm->bytes[vm->ip]){
-      /* {{{ main op switch */
-      case NOP:
-        /* that was tough */
-#if VERBOSE
-        printf("%04x: nop\n", vm->ip);
-#endif
-        break;
-      case LOAD_CONST:
-        /* extract the bytes */
-        byte_one   = vm->bytes[vm->ip + 1];
-        byte_two   = vm->bytes[vm->ip + 2] << 2;
-        byte_three = vm->bytes[vm->ip + 3] << 4;
-        byte_four  = vm->bytes[vm->ip + 4] << 6;
-        /* assemble the final number */
-        value = byte_one ^ byte_two ^ byte_three ^ byte_four;
-        /* skip over the bytes */
-        vm->ip += 4;
+      break;
+    case LOAD_CONST:
+      /* extract the bytes */
+      byte_one   = vm->bytes[vm->ip + 1];
+      byte_two   = vm->bytes[vm->ip + 2] << 2;
+      byte_three = vm->bytes[vm->ip + 3] << 4;
+      byte_four  = vm->bytes[vm->ip + 4] << 6;
+      /* assemble the final number */
+      value = byte_one ^ byte_two ^ byte_three ^ byte_four;
+      /* skip over the bytes */
+      vm->ip += 4;
 
 #if VERBOSE
-        printf("%04x: push\t(%d)\n", vm->ip, value);
+      printf("%04x: push\t(%d)\n", vm->ip, value);
 #endif
 
-        load_const(vm, value);
-        break;
-      case DISCARD:
+      load_const(vm, value);
+      break;
+    case DISCARD:
 #if VERBOSE
-        printf("%04x: discard\n", vm->ip);
+      printf("%04x: discard\n", vm->ip);
 #endif
-        discard(vm);
-        break;
-      case ROT_TWO:
+      discard(vm);
+      break;
+    case ROT_TWO:
 #if VERBOSE
-        printf("%04x: rot_two\n", vm->ip);
+      printf("%04x: rot_two\n", vm->ip);
 #endif
-        rot_two(vm);
-        break;
-      case ROT_THREE:
+      rot_two(vm);
+      break;
+    case ROT_THREE:
 #if VERBOSE
-        printf("%04x: rot_three\n", vm->ip);
+      printf("%04x: rot_three\n", vm->ip);
 #endif
-        rot_three(vm);
-        break;
-      case STORE:
-        /* I don't want to declare any additional variables, so I'm using
-         * 'byte_one', but calling it 'length' makes more sense */
+      rot_three(vm);
+      break;
+    case STORE:
+      /* I don't want to declare any additional variables, so I'm using
+       * 'byte_one', but calling it 'length' makes more sense */
 #define length byte_one
 
-        length = vm->bytes[++vm->ip];
-        string = malloc(length);
+      length = vm->bytes[++vm->ip];
+      string = malloc(length);
 
-        if (!string){
-          fprintf(stderr, "malloc: failed to allocate %d bytes.\n", length);
-          return 2;
-        }
+      if (!string){
+        fprintf(stderr, "malloc: failed to allocate %d bytes.\n", length);
+        return;
+      }
 
-        /* skip over the length byte */
-        vm->ip++;
-        /* getting the variables name, iterating through the <length> next
-         * numbers */
-        for (j = 0; j < length; j++){
-          string[j] = vm->bytes[vm->ip + j];
-        }
-        /* skip over the bytes */
-        vm->ip += length - 1;
+      /* skip over the length byte */
+      vm->ip++;
+      /* getting the variables name, iterating through the <length> next
+       * numbers */
+      for (j = 0; j < length; j++){
+        string[j] = vm->bytes[vm->ip + j];
+      }
+      /* skip over the bytes */
+      vm->ip += length - 1;
 
 #undef length
 #if VERBOSE
-        printf("%04x: store\t(%s)\n", vm->ip, string);
+      printf("%04x: store\t(%s)\n", vm->ip, string);
 #endif
-        store(vm, strdup(string));
-        free(string);
-        string = NULL;
-        break;
-      case LOAD_NAME:
-        /* Some trick over here */
+      store(vm, strdup(string));
+      free(string);
+      string = NULL;
+      break;
+    case LOAD_NAME:
+      /* Some trick over here */
 #define length byte_one
-        length = vm->bytes[++vm->ip];
-        string = malloc(length);
+      length = vm->bytes[++vm->ip];
+      string = malloc(length);
 
-        if (!string){
-          fprintf(stderr, "malloc: failed to allocate %d bytes.\n", length);
-          return 2;
-        }
+      if (!string){
+        fprintf(stderr, "malloc: failed to allocate %d bytes.\n", length);
+        return;
+      }
 
-        /* skip over the length byte */
-        vm->ip++;
-        /* getting the variables name, iterating through the <length> next
-         * numbers */
-        for (j = 0; j < length; j++){
-          string[j] = vm->bytes[vm->ip + j];
-        }
-        /* skip over the bytes */
-        vm->ip += length - 1;
+      /* skip over the length byte */
+      vm->ip++;
+      /* getting the variables name, iterating through the <length> next
+       * numbers */
+      for (j = 0; j < length; j++){
+        string[j] = vm->bytes[vm->ip + j];
+      }
+      /* skip over the bytes */
+      vm->ip += length - 1;
 
 #if VERBOSE
-        printf("%04x: get\t(%s)\n", vm->ip, string);
+      printf("%04x: get\t(%s)\n", vm->ip, string);
 #endif
 #undef length
-        load_name(vm, strdup(string));
-        free(string);
-        string = NULL;
-        break;
-      case DUP:
+      load_name(vm, strdup(string));
+      free(string);
+      string = NULL;
+      break;
+    case DUP:
 #if VERBOSE
-        printf("%04x: dup\n", vm->ip);
+      printf("%04x: dup\n", vm->ip);
 #endif
-        dup(vm);
-        break;
-      case BINARY_ADD:
+      dup(vm);
+      break;
+    case BINARY_ADD:
 #if VERBOSE
-        printf("%04x: add\n", vm->ip);
+      printf("%04x: add\n", vm->ip);
 #endif
-        binop(vm, vm->bytes[vm->ip]);
-        break;
-      case BINARY_SUB:
+      binop(vm, vm->bytes[vm->ip]);
+      break;
+    case BINARY_SUB:
 #if VERBOSE
-        printf("%04x: sub\n", vm->ip);
+      printf("%04x: sub\n", vm->ip);
 #endif
-        binop(vm, vm->bytes[vm->ip]);
-        break;
-      case BINARY_MUL:
+      binop(vm, vm->bytes[vm->ip]);
+      break;
+    case BINARY_MUL:
 #if VERBOSE
-        printf("%04x: mul\n", vm->ip);
+      printf("%04x: mul\n", vm->ip);
 #endif
-        binop(vm, vm->bytes[vm->ip]);
-        break;
-      case BINARY_DIV:
+      binop(vm, vm->bytes[vm->ip]);
+      break;
+    case BINARY_DIV:
 #if VERBOSE
-        printf("%04x: div\n", vm->ip);
+      printf("%04x: div\n", vm->ip);
 #endif
-        binop(vm, vm->bytes[vm->ip]);
-        break;
-      case CALL:
+      binop(vm, vm->bytes[vm->ip]);
+      break;
+    case CALL:
 #define length byte_one
-        length = vm->bytes[++vm->ip];
-        string = malloc(length);
-        /* skip over the length byte */
-        vm->ip++;
-        /* get the name */
-        for (j = 0; j < length; j++){
-          string[j] = vm->bytes[vm->ip + j];
-        }
-        printf("%04x: call\t(%s)\n", vm->ip, string);
-        vm->ip += length + 1;
+      length = vm->bytes[++vm->ip];
+      string = malloc(length);
+      /* skip over the length byte */
+      vm->ip++;
+      /* get the name */
+      for (j = 0; j < length; j++){
+        string[j] = vm->bytes[vm->ip + j];
+      }
+      printf("%04x: call\t(%s)\n", vm->ip, string);
+      vm->ip += length + 1;
 #undef  length
-        call(vm, strdup(string));
-        free(string);
-        break;
-      default:
-        printf("%04x: error: unknown op: %d (%08X)\n", vm->ip, vm->bytes[vm->ip], vm->bytes[vm->ip]);
-        /* you failed the game */
-        return 1;
-        break;
-      /* }}} */
-    }
+      call(vm, strdup(string));
+      free(string);
+      break;
+    default:
+      printf("%04x: error: unknown op: %d (%08X)\n", vm->ip, vm->bytes[vm->ip], vm->bytes[vm->ip]);
+      /* you failed the game */
+      return;
+      break;
+    /* }}} */
   }
-
-  fclose(f);
-
-  return 0;
   /* }}} */
 }
 

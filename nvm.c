@@ -349,10 +349,8 @@ int nvm_blastoff(nvm_t *vm)
 
   /* we start from 3 to skip over the version
      we end   at functions offset */
-  for (int i = 3; i < vm->functions_offset; i++){
-    /* increment the program counter */
-    vm->ip++;
-    switch (vm->bytes[i]){
+  for (vm->ip = 3; vm->ip < vm->functions_offset; vm->ip++){
+    switch (vm->bytes[vm->ip]){
       /* {{{ main op switch */
       case NOP:
         /* that was tough */
@@ -362,14 +360,14 @@ int nvm_blastoff(nvm_t *vm)
         break;
       case LOAD_CONST:
         /* extract the bytes */
-        byte_one   = vm->bytes[i + 1];
-        byte_two   = vm->bytes[i + 2] << 2;
-        byte_three = vm->bytes[i + 3] << 4;
-        byte_four  = vm->bytes[i + 4] << 6;
+        byte_one   = vm->bytes[vm->ip + 1];
+        byte_two   = vm->bytes[vm->ip + 2] << 2;
+        byte_three = vm->bytes[vm->ip + 3] << 4;
+        byte_four  = vm->bytes[vm->ip + 4] << 6;
         /* assemble the final number */
         value = byte_one ^ byte_two ^ byte_three ^ byte_four;
         /* skip over the bytes */
-        i += 4;
+        vm->ip += 4;
 
 #if VERBOSE
         printf("%04x: push\t(%d)\n", vm->ip, value);
@@ -400,7 +398,7 @@ int nvm_blastoff(nvm_t *vm)
          * 'byte_one', but calling it 'length' makes more sense */
 #define length byte_one
 
-        length = vm->bytes[++i];
+        length = vm->bytes[++vm->ip];
         string = malloc(length);
 
         if (!string){
@@ -409,14 +407,14 @@ int nvm_blastoff(nvm_t *vm)
         }
 
         /* skip over the length byte */
-        i++;
+        vm->ip++;
         /* getting the variables name, iterating through the <length> next
          * numbers */
         for (j = 0; j < length; j++){
-          string[j] = vm->bytes[i + j];
+          string[j] = vm->bytes[vm->ip + j];
         }
         /* skip over the bytes */
-        i += length - 1;
+        vm->ip += length - 1;
 
 #undef length
 #if VERBOSE
@@ -429,7 +427,7 @@ int nvm_blastoff(nvm_t *vm)
       case LOAD_NAME:
         /* Some trick over here */
 #define length byte_one
-        length = vm->bytes[++i];
+        length = vm->bytes[++vm->ip];
         string = malloc(length);
 
         if (!string){
@@ -438,14 +436,14 @@ int nvm_blastoff(nvm_t *vm)
         }
 
         /* skip over the length byte */
-        i++;
+        vm->ip++;
         /* getting the variables name, iterating through the <length> next
          * numbers */
         for (j = 0; j < length; j++){
-          string[j] = vm->bytes[i + j];
+          string[j] = vm->bytes[vm->ip + j];
         }
         /* skip over the bytes */
-        i += length - 1;
+        vm->ip += length - 1;
 
 #if VERBOSE
         printf("%04x: get\t(%s)\n", vm->ip, string);
@@ -465,44 +463,44 @@ int nvm_blastoff(nvm_t *vm)
 #if VERBOSE
         printf("%04x: add\n", vm->ip);
 #endif
-        binop(vm, vm->bytes[i]);
+        binop(vm, vm->bytes[vm->ip]);
         break;
       case BINARY_SUB:
 #if VERBOSE
         printf("%04x: sub\n", vm->ip);
 #endif
-        binop(vm, vm->bytes[i]);
+        binop(vm, vm->bytes[vm->ip]);
         break;
       case BINARY_MUL:
 #if VERBOSE
         printf("%04x: mul\n", vm->ip);
 #endif
-        binop(vm, vm->bytes[i]);
+        binop(vm, vm->bytes[vm->ip]);
         break;
       case BINARY_DIV:
 #if VERBOSE
         printf("%04x: div\n", vm->ip);
 #endif
-        binop(vm, vm->bytes[i]);
+        binop(vm, vm->bytes[vm->ip]);
         break;
       case CALL:
 #define length byte_one
-        length = vm->bytes[++i];
+        length = vm->bytes[++vm->ip];
         string = malloc(length);
         /* skip over the length byte */
-        i++;
+        vm->ip++;
         /* get the name */
         for (j = 0; j < length; j++){
-          string[j] = vm->bytes[i + j];
+          string[j] = vm->bytes[vm->ip + j];
         }
         printf("%04x: call\t(%s)\n", vm->ip, string);
-        i += length + 1;
+        vm->ip += length + 1;
 #undef  length
         call(vm, strdup(string));
         free(string);
         break;
       default:
-        printf("%04x: error: unknown op: %d (%08X)\n", vm->ip, vm->bytes[i], vm->bytes[i]);
+        printf("%04x: error: unknown op: %d (%08X)\n", vm->ip, vm->bytes[vm->ip], vm->bytes[vm->ip]);
         /* you failed the game */
         return 1;
         break;

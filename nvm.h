@@ -84,6 +84,8 @@ typedef struct {
   BYTE *bytes;
   /* number of the bytes */
   off_t bytes_count;
+  /* program counter */
+  uint16_t pc;
   /* The Stack */
   int stack[STACK_SIZE];
   /* stack 'pointer' */

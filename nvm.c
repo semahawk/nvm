@@ -338,8 +338,6 @@ int nvm_blastoff(nvm_t *vm)
   /* this is the final number which is a result of connecting the four mentioned
    * above */
   INT value;
-  /* program counter */
-  uint16_t pc;
   /* used to retrieve variables names */
   char *string = NULL;
   /* additional counter (it's here because GCC complains about redefining it) */
@@ -352,20 +350,14 @@ int nvm_blastoff(nvm_t *vm)
   /* we start from 3 to skip over the version
      we end   at functions offset */
   for (int i = 3; i < vm->functions_offset; i++){
-    /* extract the bytes */
-    byte_one = vm->bytes[i];
-    byte_two = vm->bytes[i + 1] << 2;
-    /* assemble the final number */
-    pc = byte_one ^ byte_two;
-    /* skip over the bytes */
-    i += 2;
-
+    /* increment the program counter */
+    vm->pc++;
     switch (vm->bytes[i]){
       /* {{{ main op switch */
       case NOP:
         /* that was tough */
 #if VERBOSE
-        printf("%04x: nop\n", pc);
+        printf("%04x: nop\n",vm->pc);
 #endif
         break;
       case LOAD_CONST:
@@ -380,26 +372,26 @@ int nvm_blastoff(nvm_t *vm)
         i += 4;
 
 #if VERBOSE
-        printf("%04x: push (%d)\n", pc, value);
+        printf("%04x: push (%d)\n",vm->pc, value);
 #endif
 
         load_const(vm, value);
         break;
       case DISCARD:
 #if VERBOSE
-        printf("%04x: discard\n", pc);
+        printf("%04x: discard\n",vm->pc);
 #endif
         discard(vm);
         break;
       case ROT_TWO:
 #if VERBOSE
-        printf("%04x: rot_two\n", pc);
+        printf("%04x: rot_two\n",vm->pc);
 #endif
         rot_two(vm);
         break;
       case ROT_THREE:
 #if VERBOSE
-        printf("%04x: rot_three\n", pc);
+        printf("%04x: rot_three\n",vm->pc);
 #endif
         rot_three(vm);
         break;
@@ -428,7 +420,7 @@ int nvm_blastoff(nvm_t *vm)
 
 #undef length
 #if VERBOSE
-        printf("%04x: store (%s)\n", pc, string);
+        printf("%04x: store (%s)\n",vm->pc, string);
 #endif
         store(vm, strdup(string));
         free(string);
@@ -456,7 +448,7 @@ int nvm_blastoff(nvm_t *vm)
         i += length - 1;
 
 #if VERBOSE
-        printf("%04x: get (%s)\n", pc, string);
+        printf("%04x: get (%s)\n",vm->pc, string);
 #endif
 #undef length
         load_name(vm, strdup(string));
@@ -465,31 +457,31 @@ int nvm_blastoff(nvm_t *vm)
         break;
       case DUP:
 #if VERBOSE
-        printf("%04x: dup\n", pc);
+        printf("%04x: dup\n",vm->pc);
 #endif
         dup(vm);
         break;
       case BINARY_ADD:
 #if VERBOSE
-        printf("%04x: add\n", pc);
+        printf("%04x: add\n",vm->pc);
 #endif
         binop(vm, vm->bytes[i]);
         break;
       case BINARY_SUB:
 #if VERBOSE
-        printf("%04x: sub\n", pc);
+        printf("%04x: sub\n",vm->pc);
 #endif
         binop(vm, vm->bytes[i]);
         break;
       case BINARY_MUL:
 #if VERBOSE
-        printf("%04x: mul\n", pc);
+        printf("%04x: mul\n",vm->pc);
 #endif
         binop(vm, vm->bytes[i]);
         break;
       case BINARY_DIV:
 #if VERBOSE
-        printf("%04x: div\n", pc);
+        printf("%04x: div\n",vm->pc);
 #endif
         binop(vm, vm->bytes[i]);
         break;
@@ -503,14 +495,14 @@ int nvm_blastoff(nvm_t *vm)
         for (j = 0; j < length; j++){
           string[j] = vm->bytes[i + j];
         }
-        printf("%04x: call (%s)\n", pc, string);
+        printf("%04x: call (%s)\n",vm->pc, string);
         i += length + 1;
 #undef  length
         call(vm, strdup(string));
         free(string);
         break;
       default:
-        printf("%04x: error: unknown op: %d (%08X)\n", pc, vm->bytes[i], vm->bytes[i]);
+        printf("%04x: error: unknown op: %d (%08X)\n",vm->pc, vm->bytes[i], vm->bytes[i]);
         /* you failed the game */
         return 1;
         break;

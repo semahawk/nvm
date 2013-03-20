@@ -351,13 +351,13 @@ int nvm_blastoff(nvm_t *vm)
      we end   at functions offset */
   for (int i = 3; i < vm->functions_offset; i++){
     /* increment the program counter */
-    vm->pc++;
+    vm->ip++;
     switch (vm->bytes[i]){
       /* {{{ main op switch */
       case NOP:
         /* that was tough */
 #if VERBOSE
-        printf("%04x: nop\n",vm->pc);
+        printf("%04x: nop\n", vm->ip);
 #endif
         break;
       case LOAD_CONST:
@@ -372,26 +372,26 @@ int nvm_blastoff(nvm_t *vm)
         i += 4;
 
 #if VERBOSE
-        printf("%04x: push (%d)\n",vm->pc, value);
+        printf("%04x: push\t(%d)\n", vm->ip, value);
 #endif
 
         load_const(vm, value);
         break;
       case DISCARD:
 #if VERBOSE
-        printf("%04x: discard\n",vm->pc);
+        printf("%04x: discard\n", vm->ip);
 #endif
         discard(vm);
         break;
       case ROT_TWO:
 #if VERBOSE
-        printf("%04x: rot_two\n",vm->pc);
+        printf("%04x: rot_two\n", vm->ip);
 #endif
         rot_two(vm);
         break;
       case ROT_THREE:
 #if VERBOSE
-        printf("%04x: rot_three\n",vm->pc);
+        printf("%04x: rot_three\n", vm->ip);
 #endif
         rot_three(vm);
         break;
@@ -420,7 +420,7 @@ int nvm_blastoff(nvm_t *vm)
 
 #undef length
 #if VERBOSE
-        printf("%04x: store (%s)\n",vm->pc, string);
+        printf("%04x: store\t(%s)\n", vm->ip, string);
 #endif
         store(vm, strdup(string));
         free(string);
@@ -448,7 +448,7 @@ int nvm_blastoff(nvm_t *vm)
         i += length - 1;
 
 #if VERBOSE
-        printf("%04x: get (%s)\n",vm->pc, string);
+        printf("%04x: get\t(%s)\n", vm->ip, string);
 #endif
 #undef length
         load_name(vm, strdup(string));
@@ -457,31 +457,31 @@ int nvm_blastoff(nvm_t *vm)
         break;
       case DUP:
 #if VERBOSE
-        printf("%04x: dup\n",vm->pc);
+        printf("%04x: dup\n", vm->ip);
 #endif
         dup(vm);
         break;
       case BINARY_ADD:
 #if VERBOSE
-        printf("%04x: add\n",vm->pc);
+        printf("%04x: add\n", vm->ip);
 #endif
         binop(vm, vm->bytes[i]);
         break;
       case BINARY_SUB:
 #if VERBOSE
-        printf("%04x: sub\n",vm->pc);
+        printf("%04x: sub\n", vm->ip);
 #endif
         binop(vm, vm->bytes[i]);
         break;
       case BINARY_MUL:
 #if VERBOSE
-        printf("%04x: mul\n",vm->pc);
+        printf("%04x: mul\n", vm->ip);
 #endif
         binop(vm, vm->bytes[i]);
         break;
       case BINARY_DIV:
 #if VERBOSE
-        printf("%04x: div\n",vm->pc);
+        printf("%04x: div\n", vm->ip);
 #endif
         binop(vm, vm->bytes[i]);
         break;
@@ -495,14 +495,14 @@ int nvm_blastoff(nvm_t *vm)
         for (j = 0; j < length; j++){
           string[j] = vm->bytes[i + j];
         }
-        printf("%04x: call (%s)\n",vm->pc, string);
+        printf("%04x: call\t(%s)\n", vm->ip, string);
         i += length + 1;
 #undef  length
         call(vm, strdup(string));
         free(string);
         break;
       default:
-        printf("%04x: error: unknown op: %d (%08X)\n",vm->pc, vm->bytes[i], vm->bytes[i]);
+        printf("%04x: error: unknown op: %d (%08X)\n", vm->ip, vm->bytes[i], vm->bytes[i]);
         /* you failed the game */
         return 1;
         break;

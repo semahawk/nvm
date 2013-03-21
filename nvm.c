@@ -266,7 +266,7 @@ static void call(nvm_t *vm, char *name)
 {
   /* {{{ call body */
   unsigned func, i = vm->functions_offset;
-  int found = 0;
+  int found = 0, old_ip;
   /* search for the function */
   for (func = 0; func < vm->funcs_ptr; func++){
     /* found it */
@@ -281,12 +281,15 @@ static void call(nvm_t *vm, char *name)
     return;
   }
 
-  /* obtain the opcodes for the function */
-  for (i += vm->funcs[func].offset; vm->bytes[i] != FN_END; i++){
-    /* every loop under vm->bytes[i] there is next opcode */
-    printf("%02X ", vm->bytes[i]);
-  }
-  printf("\n");
+  /* store the old value of the instruction pointer */
+  old_ip = vm->ip;
+  /* set the instruction pointer to the body of the function */
+  vm->ip = i + vm->funcs[func].offset;
+  /* execute the body */
+  dispatch(vm);
+  /* restore the last position of the instruction, before calling */
+  /* XXX, why do I have to decrement old_ip by two, to make it work? */
+  vm->ip = (old_ip -= 2);
   /* }}} */
 }
 

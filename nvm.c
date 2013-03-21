@@ -55,6 +55,7 @@ static char *strdup(const char *p);
 static void load_const(nvm_t *vm, INT value)
 {
   /* {{{ load_const body */
+  /* check for overflow */
   if (vm->stack_ptr >= vm->stack_size){
     vm->stack_size += 10;
     vm->stack = realloc(vm->stack, vm->stack_size);
@@ -131,6 +132,12 @@ static void rot_three(nvm_t *vm)
 static void store(nvm_t *vm, char *name)
 {
   /* {{{ store body */
+  /* check for overflow */
+  if (vm->vars_ptr >= vm->vars_size){
+    vm->vars_size += 10;
+    vm->vars = realloc(vm->vars, vm->vars_size);
+  }
+
   INT FOS = pop(vm);
 
   vm->vars[vm->vars_ptr].name = name;
@@ -244,6 +251,11 @@ static void prerun(nvm_t *vm)
       /* get the name */
       for (j = 0; j < length; j++){
         name[j] = vm->bytes[off + j];
+        /* check for overflow */
+        if (vm->funcs_ptr >= vm->funcs_size){
+          vm->funcs_size += 10;
+          vm->funcs = realloc(vm->funcs, vm->funcs_size);
+        }
         vm->funcs[vm->funcs_ptr].name = name;
         vm->funcs[vm->funcs_ptr].offset = i + length;
       }
@@ -301,12 +313,17 @@ nvm_t *nvm_init(void *(*fn)(size_t), const char *filename)
     return NULL;
   }
 
-  vm->stack            = malloc(INITIAL_STACK_SIZE * sizeof(INT));
-  vm->stack_size       = INITIAL_STACK_SIZE;
   vm->filename         = filename;
   vm->bytes            = NULL;
-  vm->vars_ptr         = 0;
+  vm->stack            = fn(INITIAL_STACK_SIZE * sizeof(INT));
+  vm->stack_size       = INITIAL_STACK_SIZE;
   vm->stack_ptr        = 0;
+  vm->vars             = fn(INITIAL_VARS_STACK_SIZE * sizeof(nvm_var));
+  vm->vars_size        = INITIAL_VARS_STACK_SIZE;
+  vm->vars_ptr         = 0;
+  vm->funcs            = fn(INITIAL_FUNCS_STACK_SIZE * sizeof(nvm_function));
+  vm->funcs_size       = INITIAL_FUNCS_STACK_SIZE;
+  vm->funcs_ptr        = 0;
   vm->functions_offset = -1;
 
   return vm;
@@ -537,7 +554,7 @@ static char *strdup(const char *p)
 }
 
 /*
- * Rhapsody of Fire, Avantasia, Edguy, Iron Savior, Michael Schenker Group
+ * Helloween, Rhapsody of Fire, Avantasia, Edguy, Iron Savior, Michael Schenker Group
  *
  * The Office, Family Guy
  *

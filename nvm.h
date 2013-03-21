@@ -21,10 +21,10 @@
  * Initial size of the stack.
  */
 #define INITIAL_STACK_SIZE 10
-/* Variables stack max size */
-#define VARS_STACK_SIZE 30
-/* Functions stack max size */
-#define FUNCS_STACK_SIZE 30
+/* Initial size of the variables stack */
+#define INITIAL_VARS_STACK_SIZE 30
+/* Initial size of the functions stack */
+#define INITIAL_FUNCS_STACK_SIZE 30
 
 /*
  * Used for verbosity/debugging purposes.
@@ -86,22 +86,26 @@ typedef struct {
   /* instruction pointer */
   int ip;
   /* a pointer to the malloced Stack */
-  int *stack;
+  INT *stack;
   /* stack 'pointer' */
   unsigned stack_ptr;
   /* size of the stack */
   unsigned stack_size;
-  /* variables stack */
-  nvm_var vars[VARS_STACK_SIZE];
+  /* a pointer to the malloced variables stack */
+  nvm_var *vars;
   /* variables 'pointer' */
   unsigned vars_ptr;
+  /* size of the variables stack */
+  unsigned vars_size;
   /* functions offset (it's not unsigned because I'm using -1 later on for
      error-like purposes) */
   int functions_offset;
-  /* functions stack */
-  nvm_function funcs[FUNCS_STACK_SIZE];
+  /* a pointer to the malloced functions stack */
+  nvm_function *funcs;
   /* function 'pointer' */
   unsigned funcs_ptr;
+  /* size of the functions stack */
+  unsigned funcs_size;
 } nvm_t;
 
 /*

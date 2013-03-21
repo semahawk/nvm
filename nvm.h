@@ -18,10 +18,9 @@
 #define NVM_VERSION_MAJOR 0
 
 /*
- * Maximum size of the stack. Probably I should make it extendable in case of
- * overflow.
+ * Initial size of the stack.
  */
-#define STACK_SIZE 10
+#define INITIAL_STACK_SIZE 10
 /* Variables stack max size */
 #define VARS_STACK_SIZE 30
 /* Functions stack max size */
@@ -86,10 +85,12 @@ typedef struct {
   off_t bytes_count;
   /* instruction pointer */
   int ip;
-  /* The Stack */
-  int stack[STACK_SIZE];
+  /* a pointer to the malloced Stack */
+  int *stack;
   /* stack 'pointer' */
   unsigned stack_ptr;
+  /* size of the stack */
+  unsigned stack_size;
   /* variables stack */
   nvm_var vars[VARS_STACK_SIZE];
   /* variables 'pointer' */

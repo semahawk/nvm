@@ -55,10 +55,9 @@ static char *strdup(const char *p);
 static void load_const(nvm_t *vm, INT value)
 {
   /* {{{ load_const body */
-  if (vm->stack_ptr >= STACK_SIZE){
-    /* TODO: extend the stack */
-    fprintf(stderr, "stack overflow!\n");
-    exit(1);
+  if (vm->stack_ptr >= vm->stack_size){
+    vm->stack_size += 10;
+    vm->stack = realloc(vm->stack, vm->stack_size);
   }
 
   vm->stack[vm->stack_ptr++] = value;
@@ -302,6 +301,8 @@ nvm_t *nvm_init(void *(*fn)(size_t), const char *filename)
     return NULL;
   }
 
+  vm->stack            = malloc(INITIAL_STACK_SIZE * sizeof(INT));
+  vm->stack_size       = INITIAL_STACK_SIZE;
   vm->filename         = filename;
   vm->bytes            = NULL;
   vm->vars_ptr         = 0;
@@ -315,6 +316,7 @@ nvm_t *nvm_init(void *(*fn)(size_t), const char *filename)
 void nvm_destroy(void (*fn)(void *), nvm_t *vm)
 {
   /* {{{ nvm_destroy body */
+  fn(vm->stack);
   fn(vm->bytes);
   fn(vm);
   /* }}} */

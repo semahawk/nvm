@@ -10,6 +10,8 @@
 #include <stdbool.h>
 #include <sys/types.h>
 
+#include "opcodes.h"
+
 /*
  * Obviously.
  */
@@ -30,26 +32,6 @@
  * Used for verbosity/debugging purposes.
  */
 #define VERBOSE 1
-
-/*
- * List of opcodes.
- */
-#define NOP        0x00
-#define LOAD_CONST 0x01
-#define DISCARD    0x02
-#define BINARY_ADD 0x03
-#define BINARY_SUB 0x04
-#define BINARY_MUL 0x05
-#define BINARY_DIV 0x06
-#define ROT_TWO    0x07
-#define ROT_THREE  0x08
-#define STORE      0x09
-#define LOAD_NAME  0x0A
-#define DUP        0x0B
-#define FN_START   0x0C
-#define FN_END     0x0D
-#define CALL       0x0E
-#define BEGIN_FN   0xBF
 
 /*
  * Some handy types.

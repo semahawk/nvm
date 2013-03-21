@@ -296,9 +296,13 @@ static void call(nvm_t *vm, char *name)
   old_ip = vm->ip;
   /* set the instruction pointer to the body of the function */
   vm->ip = i + vm->funcs[func].offset;
-  /* execute the body */
-  dispatch(vm);
-  /* restore the last position of the instruction, before calling */
+  /* execute the WHOLE body */
+  while (vm->bytes[vm->ip] != FN_END){
+    dispatch(vm);
+    vm->ip++;
+  }
+  /* restore the last position of the instruction, before calling, so it could
+   * move on with the code */
   /* XXX, why do I have to decrement old_ip by two, to make it work? */
   vm->ip = (old_ip -= 2);
   /* }}} */

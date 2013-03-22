@@ -176,6 +176,9 @@ static void load_name(nvm_t *vm, char *name)
       return;
     }
   }
+
+  fprintf(stderr, "nvm: variable '%s' not found\n", name);
+  exit(1);
   /* }}}  */
 }
 

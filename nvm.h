@@ -52,8 +52,45 @@ typedef struct {
  */
 typedef struct {
   char *name;
+  /* how far from the BF byte it is */
   unsigned offset;
-} nvm_function;
+} nvm_func;
+
+/*
+ * NVM type for its stacks.
+ */
+typedef struct {
+  /* the stack itself */
+  INT *stack;
+  /* 'pointer' to the current element */
+  unsigned ptr;
+  /* size of the stack */
+  unsigned size;
+} nvm_stack;
+
+/*
+ * NVM type for its variables stack.
+ */
+typedef struct {
+  /* the stack itself */
+  nvm_var *stack;
+  /* 'pointer' to the current element */
+  unsigned ptr;
+  /* size of the stack */
+  unsigned size;
+} nvm_vars_stack;
+
+/*
+ * NVM type for its functions stack.
+ */
+typedef struct {
+  /* the stack itself */
+  nvm_func *stack;
+  /* 'pointer' to the current element */
+  unsigned ptr;
+  /* size of the stack */
+  unsigned size;
+} nvm_funcs_stack;
 
 /*
  * The main type for NVM.
@@ -67,27 +104,15 @@ typedef struct {
   off_t bytes_count;
   /* instruction pointer */
   int ip;
-  /* a pointer to the malloced Stack */
-  INT *stack;
-  /* stack 'pointer' */
-  unsigned stack_ptr;
-  /* size of the stack */
-  unsigned stack_size;
-  /* a pointer to the malloced variables stack */
-  nvm_var *vars;
-  /* variables 'pointer' */
-  unsigned vars_ptr;
-  /* size of the variables stack */
-  unsigned vars_size;
+  /* The Stack */
+  nvm_stack stack;
+  /* variables stack */
+  nvm_vars_stack vars;
   /* functions offset (it's not unsigned because I'm using -1 later on for
      error-like purposes) */
   int functions_offset;
-  /* a pointer to the malloced functions stack */
-  nvm_function *funcs;
-  /* function 'pointer' */
-  unsigned funcs_ptr;
-  /* size of the functions stack */
-  unsigned funcs_size;
+  /* functions stack */
+  nvm_funcs_stack funcs;
 } nvm_t;
 
 /*

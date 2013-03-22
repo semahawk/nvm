@@ -56,12 +56,12 @@ static void load_const(nvm_t *vm, INT value)
 {
   /* {{{ load_const body */
   /* check for overflow */
-  if (vm->stack_ptr >= vm->stack_size){
-    vm->stack_size += 10;
-    vm->stack = realloc(vm->stack, vm->stack_size);
+  if (vm->stack.ptr >= vm->stack.size){
+    vm->stack.size += 10;
+    vm->stack.stack = realloc(vm->stack.stack, vm->stack.size);
   }
 
-  vm->stack[vm->stack_ptr++] = value;
+  vm->stack.stack[vm->stack.ptr++] = value;
   /* }}} */
 }
 
@@ -72,7 +72,7 @@ static void load_const(nvm_t *vm, INT value)
 static INT pop(nvm_t *vm)
 {
   /* {{{ pop body */
-  return vm->stack[--vm->stack_ptr];
+  return vm->stack.stack[--vm->stack.ptr];
   /* }}} */
 }
 
@@ -86,7 +86,7 @@ static INT pop(nvm_t *vm)
 static void discard(nvm_t *vm)
 {
   /* {{{ discard body */
-  vm->stack[vm->stack_ptr--] = 0;
+  vm->stack.stack[vm->stack.ptr--] = 0;
   /* }}} */
 }
 
@@ -133,18 +133,19 @@ static void store(nvm_t *vm, char *name)
 {
   /* {{{ store body */
   /* check for overflow */
-  if (vm->vars_ptr >= vm->vars_size){
-    vm->vars_size += 10;
-    vm->vars = realloc(vm->vars, vm->vars_size);
+  if (vm->vars.ptr >= vm->vars.size){
+    vm->vars.size += 10;
+    vm->vars.stack = realloc(vm->vars.stack, vm->vars.size);
   }
 
   INT FOS = pop(vm);
 
-  vm->vars[vm->vars_ptr].name = name;
-  vm->vars[vm->vars_ptr].value = FOS;
-  vm->vars_ptr++;
+  vm->vars.stack[vm->vars.ptr].name = name;
+  vm->vars.stack[vm->vars.ptr].value = FOS;
+  vm->vars.ptr++;
   /* }}}  */
 }
+
 
 /*
  * name:        load_name
@@ -153,9 +154,9 @@ static void store(nvm_t *vm, char *name)
 static void load_name(nvm_t *vm, char *name)
 {
   /* {{{ load_name body */
-  for (unsigned i = 0; i < vm->vars_ptr; i++){
-    if (!strcmp(vm->vars[i].name, name)){
-      load_const(vm, vm->vars[i].value);
+  for (unsigned i = 0; i < vm->vars.ptr; i++){
+    if (!strcmp(vm->vars.stack[i].name, name)){
+      load_const(vm, vm->vars.stack[i].value);
       return;
     }
   }
@@ -211,8 +212,8 @@ void nvm_print_stack(nvm_t *vm)
   /* {{{ print_stack body */
   unsigned i;
 
-  for (i = 0; i < vm->stack_ptr; i++){
-    printf("item on stack: %d\n", vm->stack[i]);
+  for (i = 0; i < vm->stack.ptr; i++){
+    printf("item on stack: %d\n", vm->stack.stack[i]);
   }
   /* }}} */
 }
@@ -252,14 +253,14 @@ static void prerun(nvm_t *vm)
       for (j = 0; j < length; j++){
         name[j] = vm->bytes[off + j];
         /* check for overflow */
-        if (vm->funcs_ptr >= vm->funcs_size){
-          vm->funcs_size += 10;
-          vm->funcs = realloc(vm->funcs, vm->funcs_size);
+        if (vm->funcs.ptr >= vm->funcs.size){
+          vm->funcs.size += 10;
+          vm->funcs.stack = realloc(vm->funcs.stack, vm->funcs.size);
         }
-        vm->funcs[vm->funcs_ptr].name = name;
-        vm->funcs[vm->funcs_ptr].offset = i + length;
+        vm->funcs.stack[vm->funcs.ptr].name = name;
+        vm->funcs.stack[vm->funcs.ptr].offset = i + length;
       }
-      vm->funcs_ptr++;
+      vm->funcs.ptr++;
     }
     /* skip over the bytes */
     i += length + 1;
@@ -279,9 +280,9 @@ static void call(nvm_t *vm, char *name)
   unsigned func, i = vm->functions_offset;
   int found = 0, old_ip;
   /* search for the function */
-  for (func = 0; func < vm->funcs_ptr; func++){
+  for (func = 0; func < vm->funcs.ptr; func++){
     /* found it */
-    if (!strcmp(name, vm->funcs[func].name)){
+    if (!strcmp(name, vm->funcs.stack[func].name)){
       found = 1;
       break;
     }
@@ -295,7 +296,7 @@ static void call(nvm_t *vm, char *name)
   /* store the old value of the instruction pointer */
   old_ip = vm->ip;
   /* set the instruction pointer to the body of the function */
-  vm->ip = i + vm->funcs[func].offset;
+  vm->ip = i + vm->funcs.stack[func].offset;
   /* execute the WHOLE body */
   while (vm->bytes[vm->ip] != FN_END){
     dispatch(vm);
@@ -319,15 +320,15 @@ nvm_t *nvm_init(void *(*fn)(size_t), const char *filename)
 
   vm->filename         = filename;
   vm->bytes            = NULL;
-  vm->stack            = fn(INITIAL_STACK_SIZE * sizeof(INT));
-  vm->stack_size       = INITIAL_STACK_SIZE;
-  vm->stack_ptr        = 0;
-  vm->vars             = fn(INITIAL_VARS_STACK_SIZE * sizeof(nvm_var));
-  vm->vars_size        = INITIAL_VARS_STACK_SIZE;
-  vm->vars_ptr         = 0;
-  vm->funcs            = fn(INITIAL_FUNCS_STACK_SIZE * sizeof(nvm_function));
-  vm->funcs_size       = INITIAL_FUNCS_STACK_SIZE;
-  vm->funcs_ptr        = 0;
+  vm->stack.stack      = fn(INITIAL_STACK_SIZE * sizeof(INT));
+  vm->stack.size       = INITIAL_STACK_SIZE;
+  vm->stack.ptr        = 0;
+  vm->vars.stack       = fn(INITIAL_VARS_STACK_SIZE * sizeof(nvm_var));
+  vm->vars.size        = INITIAL_VARS_STACK_SIZE;
+  vm->vars.ptr         = 0;
+  vm->funcs.stack      = fn(INITIAL_FUNCS_STACK_SIZE * sizeof(nvm_func));
+  vm->funcs.size       = INITIAL_FUNCS_STACK_SIZE;
+  vm->funcs.ptr        = 0;
   vm->functions_offset = -1;
 
   return vm;
@@ -337,8 +338,10 @@ nvm_t *nvm_init(void *(*fn)(size_t), const char *filename)
 void nvm_destroy(void (*fn)(void *), nvm_t *vm)
 {
   /* {{{ nvm_destroy body */
-  fn(vm->stack);
+  fn(vm->stack.stack);
   fn(vm->bytes);
+  fn(vm->vars.stack);
+  fn(vm->funcs.stack);
   fn(vm);
   /* }}} */
 }

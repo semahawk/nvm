@@ -303,8 +303,8 @@ static void call(nvm_t *vm, char *name)
   }
 
   if (!found){
-    printf("function not found\n");
-    return;
+    printf("nvm: error: function '%s' not found\n", name);
+    exit(1);
   }
 
   /* create the stack */
@@ -493,7 +493,7 @@ static void dispatch(nvm_t *vm)
 #define length byte_one
 
       length = vm->bytes[++vm->ip];
-      string = vm->mallocer(length);
+      string = vm->mallocer(length + 1);
 
       if (!string){
         fprintf(stderr, "malloc: failed to allocate %d bytes.\n", length);
@@ -507,6 +507,7 @@ static void dispatch(nvm_t *vm)
       for (j = 0; j < length; j++){
         string[j] = vm->bytes[vm->ip + j];
       }
+      string[j] = '\0';
       /* skip over the bytes */
       vm->ip += length - 1;
 
@@ -524,7 +525,7 @@ static void dispatch(nvm_t *vm)
       /* Some trick over here */
 #define length byte_one
       length = vm->bytes[++vm->ip];
-      string = vm->mallocer(length);
+      string = vm->mallocer(length + 1);
 
       if (!string){
         fprintf(stderr, "malloc: failed to allocate %d bytes.\n", length);
@@ -538,6 +539,7 @@ static void dispatch(nvm_t *vm)
       for (j = 0; j < length; j++){
         string[j] = vm->bytes[vm->ip + j];
       }
+      string[j] = '\0';
       /* skip over the bytes */
       vm->ip += length - 1;
 
@@ -594,19 +596,22 @@ static void dispatch(nvm_t *vm)
     case CALL:
 #define length byte_one
       length = vm->bytes[++vm->ip];
-      string = vm->mallocer(length);
+      string = vm->mallocer(length + 1);
       /* skip over the length byte */
       vm->ip++;
       /* get the name */
       for (j = 0; j < length; j++){
         string[j] = vm->bytes[vm->ip + j];
       }
+      string[j] = '\0';
+      /* skip over the bytes */
+      vm->ip += length + 1;
+
 #if VERBOSE
       printf("%04x:", vm->ip);
       print_spaces();
       printf("call\t(%s)\n", string);
 #endif
-      vm->ip += length + 1;
 #undef  length
       call(vm, strdup(string));
       vm->freeer(string);

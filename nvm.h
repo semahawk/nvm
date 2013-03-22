@@ -93,6 +93,14 @@ typedef struct {
 } nvm_funcs_stack;
 
 /*
+ * NVM type for its call stack frame.
+ */
+typedef struct {
+  /* stack of local variables for the function call */
+  nvm_vars_stack vars;
+} nvm_call_frame;
+
+/*
  * The main type for NVM.
  */
 typedef struct {

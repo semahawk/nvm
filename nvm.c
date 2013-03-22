@@ -279,6 +279,10 @@ static void call(nvm_t *vm, char *name)
   /* {{{ call body */
   unsigned func, i = vm->functions_offset;
   int found = 0, old_ip;
+  /* new frame for the call */
+  nvm_call_frame *new_frame = malloc(sizeof(nvm_call_frame));
+  /* store the old variables stack */
+  nvm_vars_stack old_vars_stack = vm->vars;
   /* search for the function */
   for (func = 0; func < vm->funcs.ptr; func++){
     /* found it */
@@ -293,6 +297,12 @@ static void call(nvm_t *vm, char *name)
     return;
   }
 
+  /* create the stack */
+  new_frame->vars.stack = malloc(INITIAL_VARS_STACK_SIZE * sizeof(nvm_vars_stack));
+  /* set the variables stack to the newly created one */
+  vm->vars.stack = new_frame->vars.stack;
+  vm->vars.ptr = 0;
+  vm->vars.size = 0;
   /* store the old value of the instruction pointer */
   old_ip = vm->ip;
   /* set the instruction pointer to the body of the function */
@@ -306,6 +316,11 @@ static void call(nvm_t *vm, char *name)
    * move on with the code */
   /* XXX, why do I have to decrement old_ip by two, to make it work? */
   vm->ip = (old_ip -= 2);
+  /* restore the old variables stack */
+  vm->vars = old_vars_stack;
+  /* free the functions call stack */
+  free(new_frame->vars.stack);
+  free(new_frame);
   /* }}} */
 }
 

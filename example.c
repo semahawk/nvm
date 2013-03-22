@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
   }
 
   /* init the VM */
-  nvm_t *vm = nvm_init(malloc, "bytecode.nc");
+  nvm_t *vm = nvm_init("bytecode.nc", malloc, free);
 
   if (!vm){
     fprintf(stderr, "error with initializing the VM :C\n");
@@ -95,7 +95,7 @@ int main(int argc, char *argv[])
   /* print what's on the stack */
   nvm_print_stack(vm);
   /* clean after yourself */
-  nvm_destroy(free, vm);
+  nvm_destroy(vm);
 
   return 0;
 }

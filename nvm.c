@@ -246,7 +246,7 @@ static void prerun(nvm_t *vm)
       /* skip over FN_START */
       i++;
       length = vm->bytes[off];
-      name = malloc(length);
+      name = vm->mallocer(length);
       /* skip over the length */
       i++;
       /* get the name */
@@ -280,7 +280,7 @@ static void call(nvm_t *vm, char *name)
   unsigned func, i = vm->functions_offset;
   int found = 0, old_ip;
   /* new frame for the call */
-  nvm_call_frame *new_frame = malloc(sizeof(nvm_call_frame));
+  nvm_call_frame *new_frame = vm->mallocer(sizeof(nvm_call_frame));
   /* store the old variables stack */
   nvm_vars_stack old_vars_stack = vm->vars;
   /* search for the function */
@@ -298,7 +298,7 @@ static void call(nvm_t *vm, char *name)
   }
 
   /* create the stack */
-  new_frame->vars.stack = malloc(INITIAL_VARS_STACK_SIZE * sizeof(nvm_vars_stack));
+  new_frame->vars.stack = vm->mallocer(INITIAL_VARS_STACK_SIZE * sizeof(nvm_vars_stack));
   /* set the variables stack to the newly created one */
   vm->vars.stack = new_frame->vars.stack;
   vm->vars.ptr = 0;
@@ -319,15 +319,23 @@ static void call(nvm_t *vm, char *name)
   /* restore the old variables stack */
   vm->vars = old_vars_stack;
   /* free the functions call stack */
-  free(new_frame->vars.stack);
-  free(new_frame);
+  vm->freeer(new_frame->vars.stack);
+  new_frame->vars.stack = NULL;
+  vm->freeer(new_frame);
+  new_frame = NULL;
   /* }}} */
 }
 
-nvm_t *nvm_init(void *(*fn)(size_t), const char *filename)
+nvm_t *nvm_init(const char *filename, void *(*mallocer)(size_t), void (*freeer)(void *))
 {
   /* {{{ nvm_init body */
-  nvm_t *vm = fn(sizeof(nvm_t));
+  /* set the defaults for mallocer and freeer */
+  if (mallocer == NULL)
+    mallocer = malloc;
+  if (freeer == NULL)
+    freeer = free;
+
+  nvm_t *vm = mallocer(sizeof(nvm_t));
 
   if (!vm){
     return NULL;
@@ -335,13 +343,15 @@ nvm_t *nvm_init(void *(*fn)(size_t), const char *filename)
 
   vm->filename         = filename;
   vm->bytes            = NULL;
-  vm->stack.stack      = fn(INITIAL_STACK_SIZE * sizeof(INT));
+  vm->mallocer         = mallocer;
+  vm->freeer           = freeer;
+  vm->stack.stack      = mallocer(INITIAL_STACK_SIZE * sizeof(INT));
   vm->stack.size       = INITIAL_STACK_SIZE;
   vm->stack.ptr        = 0;
-  vm->vars.stack       = fn(INITIAL_VARS_STACK_SIZE * sizeof(nvm_var));
+  vm->vars.stack       = mallocer(INITIAL_VARS_STACK_SIZE * sizeof(nvm_var));
   vm->vars.size        = INITIAL_VARS_STACK_SIZE;
   vm->vars.ptr         = 0;
-  vm->funcs.stack      = fn(INITIAL_FUNCS_STACK_SIZE * sizeof(nvm_func));
+  vm->funcs.stack      = mallocer(INITIAL_FUNCS_STACK_SIZE * sizeof(nvm_func));
   vm->funcs.size       = INITIAL_FUNCS_STACK_SIZE;
   vm->funcs.ptr        = 0;
   vm->functions_offset = -1;
@@ -350,14 +360,19 @@ nvm_t *nvm_init(void *(*fn)(size_t), const char *filename)
   /* }}} */
 }
 
-void nvm_destroy(void (*fn)(void *), nvm_t *vm)
+void nvm_destroy(nvm_t *vm)
 {
   /* {{{ nvm_destroy body */
-  fn(vm->stack.stack);
-  fn(vm->bytes);
-  fn(vm->vars.stack);
-  fn(vm->funcs.stack);
-  fn(vm);
+  vm->freeer(vm->stack.stack);
+  vm->freeer(vm->bytes);
+  vm->freeer(vm->vars.stack);
+  vm->freeer(vm->funcs.stack);
+  vm->freeer(vm);
+  vm->stack.stack = NULL;
+  vm->bytes = NULL;
+  vm->vars.stack = NULL;
+  vm->funcs.stack = NULL;
+  vm = NULL;
   /* }}} */
 }
 
@@ -370,7 +385,7 @@ int nvm_blastoff(nvm_t *vm)
   struct stat st;
   stat(vm->filename, &st);
   /* setting VMs bytes */
-  vm->bytes = malloc(st.st_size);
+  vm->bytes = vm->mallocer(st.st_size);
   vm->bytes_count = st.st_size;
   /* fetch the file */
   fread(vm->bytes, st.st_size, sizeof(BYTE), f);
@@ -456,7 +471,7 @@ static void dispatch(nvm_t *vm)
 #define length byte_one
 
       length = vm->bytes[++vm->ip];
-      string = malloc(length);
+      string = vm->mallocer(length);
 
       if (!string){
         fprintf(stderr, "malloc: failed to allocate %d bytes.\n", length);
@@ -478,14 +493,14 @@ static void dispatch(nvm_t *vm)
       printf("%04x: store\t(%s)\n", vm->ip, string);
 #endif
       store(vm, strdup(string));
-      free(string);
+      vm->freeer(string);
       string = NULL;
       break;
     case LOAD_NAME:
       /* Some trick over here */
 #define length byte_one
       length = vm->bytes[++vm->ip];
-      string = malloc(length);
+      string = vm->mallocer(length);
 
       if (!string){
         fprintf(stderr, "malloc: failed to allocate %d bytes.\n", length);
@@ -507,7 +522,7 @@ static void dispatch(nvm_t *vm)
 #endif
 #undef length
       load_name(vm, strdup(string));
-      free(string);
+      vm->freeer(string);
       string = NULL;
       break;
     case DUP:
@@ -543,7 +558,7 @@ static void dispatch(nvm_t *vm)
     case CALL:
 #define length byte_one
       length = vm->bytes[++vm->ip];
-      string = malloc(length);
+      string = vm->mallocer(length);
       /* skip over the length byte */
       vm->ip++;
       /* get the name */
@@ -554,7 +569,7 @@ static void dispatch(nvm_t *vm)
       vm->ip += length + 1;
 #undef  length
       call(vm, strdup(string));
-      free(string);
+      vm->freeer(string);
       break;
     default:
       printf("%04x: error: unknown op: %d (%08X)\n", vm->ip, vm->bytes[vm->ip], vm->bytes[vm->ip]);
@@ -576,7 +591,8 @@ static char *strdup(const char *p)
 }
 
 /*
- * Helloween, Rhapsody of Fire, Avantasia, Edguy, Iron Savior, Michael Schenker Group
+ * Helloween, Rhapsody of Fire, Avantasia, Edguy, Iron Savior
+ * Michael Schenker Group, Testament
  *
  * The Office, Family Guy
  *

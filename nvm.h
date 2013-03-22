@@ -110,6 +110,10 @@ typedef struct {
   BYTE *bytes;
   /* number of the bytes */
   off_t bytes_count;
+  /* a pointer to the mallocing function */
+  void *(*mallocer)(size_t);
+  /* a pointer to the freeing function */
+  void (*freeer)(void *);
   /* instruction pointer */
   int ip;
   /* The Stack */
@@ -129,14 +133,17 @@ typedef struct {
  *
  * parameters:
  *
- *   malloccer: pointer to a function that would allocate the needed stuff.
+ *   malloccer: pointer to a function that would allocate the needed stuff
+ *              (if NULL, will use malloc)
+ *      freeer: pointer to a function that would free the allocated stuff.
+ *              (if NULL, will use free)
  *    filename: name of a file into which the bytecode will be
  *              printed and from which the bytecode will be extracted in order
  *              to execute the operations.
  *
  * return:      pointer to a new malloced object or NULL if malloc failed
  */
-nvm_t *nvm_init(void *(*malloccer)(size_t), const char *filename);
+nvm_t *nvm_init(const char *filename, void *(*malloccer)(size_t), void (*freeer)(void *));
 
 /*
  * name:        nvm_blastoff
@@ -150,10 +157,8 @@ int nvm_blastoff(nvm_t *vm);
  * name:        nvm_destroy
  * description: cleans up after everything (which includes fclosing the file and
  *              freeing the malloced pointer)
- * parameter:   freeer - pointer to a function that would 'free' the allocced
- *                       data NVM used.
  */
-void nvm_destroy(void (*freeer)(void *), nvm_t *virtual_machine);
+void nvm_destroy(nvm_t *virtual_machine);
 
 /*
  * name:        nvm_print_stack

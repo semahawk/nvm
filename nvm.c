@@ -48,6 +48,16 @@ static void dispatch(nvm_t *vm);
 static char *strdup(const char *p);
 /* }}} */
 
+/* to make the output nicer */
+static unsigned shiftwidth = 1;
+#define shiftright() shiftwidth += 2
+#define shiftleft() shiftwidth -= 2
+#define print_spaces() do {\
+  unsigned counter = 0;\
+  for (; counter < shiftwidth; counter++)\
+    printf(" ");\
+} while (0);
+
 /*
  * name:        load_const
  * description: pushes given <value> to the stack
@@ -307,6 +317,7 @@ static void call(nvm_t *vm, char *name)
   old_ip = vm->ip;
   /* set the instruction pointer to the body of the function */
   vm->ip = i + vm->funcs.stack[func].offset;
+  shiftright();
   /* execute the WHOLE body */
   while (vm->bytes[vm->ip] != FN_END){
     dispatch(vm);
@@ -323,6 +334,7 @@ static void call(nvm_t *vm, char *name)
   new_frame->vars.stack = NULL;
   vm->freeer(new_frame);
   new_frame = NULL;
+  shiftleft();
   /* }}} */
 }
 
@@ -427,7 +439,9 @@ static void dispatch(nvm_t *vm)
     case NOP:
       /* that was tough */
 #if VERBOSE
-      printf("%04x: nop\n", vm->ip);
+      printf("%04x:", vm->ip);
+      print_spaces();
+      printf("nop\n");
 #endif
       break;
     case LOAD_CONST:
@@ -442,26 +456,34 @@ static void dispatch(nvm_t *vm)
       vm->ip += 4;
 
 #if VERBOSE
-      printf("%04x: push\t(%d)\n", vm->ip, value);
+      printf("%04x:", vm->ip);
+      print_spaces();
+      printf("push\t(%d)\n", value);
 #endif
 
       load_const(vm, value);
       break;
     case DISCARD:
 #if VERBOSE
-      printf("%04x: discard\n", vm->ip);
+      printf("%04x:", vm->ip);
+      print_spaces();
+      printf("discard\n");
 #endif
       discard(vm);
       break;
     case ROT_TWO:
 #if VERBOSE
-      printf("%04x: rot_two\n", vm->ip);
+      printf("%04x:", vm->ip);
+      print_spaces();
+      printf("rot_two\n");
 #endif
       rot_two(vm);
       break;
     case ROT_THREE:
 #if VERBOSE
-      printf("%04x: rot_three\n", vm->ip);
+      printf("%04x:", vm->ip);
+      print_spaces();
+      printf("rot_three\n");
 #endif
       rot_three(vm);
       break;
@@ -490,7 +512,9 @@ static void dispatch(nvm_t *vm)
 
 #undef length
 #if VERBOSE
-      printf("%04x: store\t(%s)\n", vm->ip, string);
+      printf("%04x:", vm->ip);
+      print_spaces();
+      printf("store\t(%s)\n", string);
 #endif
       store(vm, strdup(string));
       vm->freeer(string);
@@ -518,7 +542,9 @@ static void dispatch(nvm_t *vm)
       vm->ip += length - 1;
 
 #if VERBOSE
-      printf("%04x: get\t(%s)\n", vm->ip, string);
+      printf("%04x:", vm->ip);
+      print_spaces();
+      printf("get\t(%s)\n", string);
 #endif
 #undef length
       load_name(vm, strdup(string));
@@ -527,31 +553,41 @@ static void dispatch(nvm_t *vm)
       break;
     case DUP:
 #if VERBOSE
-      printf("%04x: dup\n", vm->ip);
+      printf("%04x:", vm->ip);
+      print_spaces();
+      printf("dup\n");
 #endif
       dup(vm);
       break;
     case BINARY_ADD:
 #if VERBOSE
-      printf("%04x: add\n", vm->ip);
+      printf("%04x:", vm->ip);
+      print_spaces();
+      printf("add\n");
 #endif
       binop(vm, vm->bytes[vm->ip]);
       break;
     case BINARY_SUB:
 #if VERBOSE
-      printf("%04x: sub\n", vm->ip);
+      printf("%04x:", vm->ip);
+      print_spaces();
+      printf("sub\n");
 #endif
       binop(vm, vm->bytes[vm->ip]);
       break;
     case BINARY_MUL:
 #if VERBOSE
-      printf("%04x: mul\n", vm->ip);
+      printf("%04x:", vm->ip);
+      print_spaces();
+      printf("mul\n");
 #endif
       binop(vm, vm->bytes[vm->ip]);
       break;
     case BINARY_DIV:
 #if VERBOSE
-      printf("%04x: div\n", vm->ip);
+      printf("%04x:", vm->ip);
+      print_spaces();
+      printf("div\n");
 #endif
       binop(vm, vm->bytes[vm->ip]);
       break;
@@ -565,7 +601,11 @@ static void dispatch(nvm_t *vm)
       for (j = 0; j < length; j++){
         string[j] = vm->bytes[vm->ip + j];
       }
-      printf("%04x: call\t(%s)\n", vm->ip, string);
+#if VERBOSE
+      printf("%04x:", vm->ip);
+      print_spaces();
+      printf("call\t(%s)\n", string);
+#endif
       vm->ip += length + 1;
 #undef  length
       call(vm, strdup(string));

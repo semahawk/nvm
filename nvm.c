@@ -82,6 +82,12 @@ static void load_const(nvm_t *vm, INT value)
 static INT pop(nvm_t *vm)
 {
   /* {{{ pop body */
+  /* check if the stack is empty */
+  if (vm->stack.ptr <= 0){
+    fprintf(stderr, "nvm: error: attempting to pop from an empty stack\n");
+    exit(1);
+  }
+
   return vm->stack.stack[--vm->stack.ptr];
   /* }}} */
 }
@@ -222,6 +228,12 @@ void nvm_print_stack(nvm_t *vm)
   /* {{{ print_stack body */
   unsigned i;
 
+  if (vm->stack.ptr <= 0){
+    /* the stack is empty */
+    printf("the stack is empty\n");
+    return;
+  }
+
   for (i = 0; i < vm->stack.ptr; i++){
     printf("item on stack: %d\n", vm->stack.stack[i]);
   }
@@ -251,30 +263,28 @@ static void prerun(nvm_t *vm)
 
   /* start from 1 to skip over the BF byte */
   for (i = 1; i < vm->bytes_count - vm->functions_offset; i++){
-#define off i + vm->functions_offset
-    if (vm->bytes[off] == FN_START){
+    /* found a function definition */
+    if (vm->bytes[i + vm->functions_offset] == FN_START){
       /* skip over FN_START */
       i++;
-      length = vm->bytes[off];
-      name = vm->mallocer(length);
-      /* skip over the length */
+      /* get the length */
+      length = vm->bytes[i + vm->functions_offset];
+      name = vm->mallocer(length + 1);
+      /* skip over the length byte */
       i++;
       /* get the name */
       for (j = 0; j < length; j++){
-        name[j] = vm->bytes[off + j];
-        /* check for overflow */
-        if (vm->funcs.ptr >= vm->funcs.size){
-          vm->funcs.size += 10;
-          vm->funcs.stack = realloc(vm->funcs.stack, vm->funcs.size);
-        }
-        vm->funcs.stack[vm->funcs.ptr].name = name;
-        vm->funcs.stack[vm->funcs.ptr].offset = i + length;
+        name[j] = vm->bytes[i + vm->functions_offset + j];
       }
+      name[j] = '\0';
+      /* skip over the whole name */
+      i += length;
+      /* append that function to the functions stack */
+      vm->funcs.stack[vm->funcs.ptr].name = strdup(name);
+      vm->funcs.stack[vm->funcs.ptr].offset = i;
       vm->funcs.ptr++;
+      free(name);
     }
-    /* skip over the bytes */
-    i += length + 1;
-#undef off
   }
   /* }}} */
 }

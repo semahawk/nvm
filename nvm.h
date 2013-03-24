@@ -36,11 +36,6 @@
 #define VERBOSE 1
 
 /*
- * A nice handy macro
- */
-#define NVM_ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
-
-/*
  * Some handy types.
  */
 typedef unsigned char BYTE;
@@ -176,6 +171,16 @@ int nvm_blastoff(nvm_t *vm);
  *              freeing the malloced pointer)
  */
 void nvm_destroy(nvm_t *virtual_machine);
+
+/*
+ * name:        nvm_validate
+ * description: validates the bytecode, if all the opcodes are correct and known
+ *              and so-on
+ * return:       0 - everything worked correctly
+ *              -1 - there is an unknown opcode
+ *              -2 - the virtual machine was not inited
+ */
+int nvm_validate(nvm_t *virtual_machine);
 
 /*
  * name:        nvm_print_stack

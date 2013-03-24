@@ -90,6 +90,11 @@ int main(int argc, char *argv[])
     return 1;
   }
 
+  /* validate the bytecode first */
+  if (nvm_validate(vm) != 0){
+    fprintf(stderr, "nvm: bytecode validation failed\n");
+    exit(1);
+  }
   /* starts off the reading from file and executing the ops process */
   nvm_blastoff(vm);
   /* print what's on the stack */

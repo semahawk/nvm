@@ -192,6 +192,20 @@ nvm_t *nvm_init(const char *filename, void *(*mallocer)(size_t), void (*freeer)(
   vm->functions_offset = -1;
   tobefreed            = mallocer(INITIAL_STACK_SIZE * sizeof(void *));
 
+  /* initialize the bytes */
+  /* open the file */
+  FILE *f = fopen(vm->filename, "rb");
+  /* get the file size */
+  struct stat st;
+  stat(vm->filename, &st);
+  /* setting VMs bytes */
+  vm->bytes = vm->mallocer(st.st_size);
+  vm->bytes_count = st.st_size;
+  /* fetch the file */
+  fread(vm->bytes, st.st_size, sizeof(BYTE), f);
+  /* close the file */
+  fclose(f);
+
   return vm;
   /* }}} */
 }
@@ -224,17 +238,6 @@ void nvm_destroy(nvm_t *vm)
 int nvm_blastoff(nvm_t *vm)
 {
   /* {{{ nvm_blastoff body */
-  /* open the file */
-  FILE *f = fopen(vm->filename, "rb");
-  /* get the file size */
-  struct stat st;
-  stat(vm->filename, &st);
-  /* setting VMs bytes */
-  vm->bytes = vm->mallocer(st.st_size);
-  vm->bytes_count = st.st_size;
-  /* fetch the file */
-  fread(vm->bytes, st.st_size, sizeof(BYTE), f);
-
   /* start the pre-run (search for functions, store them, etc.) */
   prerun(vm);
 
@@ -248,9 +251,78 @@ int nvm_blastoff(nvm_t *vm)
     dispatch(vm);
   }
 
-  fclose(f);
-
   return 0;
+  /* }}} */
+}
+
+int nvm_validate(nvm_t *vm)
+{
+  /* {{{ nvm_validate body */
+  if (vm->bytes){
+    int tmp;
+    for (unsigned i = 3; i < vm->bytes_count; i++){
+      switch (vm->bytes[i]){
+        /* fall throughs */
+        case NOP:
+          break;
+        case LOAD_CONST:
+          i += 4;
+          break;
+        case DISCARD:
+        case ROT_TWO:
+        case ROT_THREE:
+          break;
+        case STORE:
+          /* byte next to STORE is that variables name length */
+          tmp = vm->bytes[++i];
+          /* skip over the length byte */
+          i++;
+          /* skip over the name */
+          i += tmp - 1;
+          break;
+        case LOAD_NAME:
+          /* byte next to LOAD_NAME is that variables name length */
+          tmp = vm->bytes[++i];
+          /* skip over the length byte */
+          i++;
+          /* skip over the name */
+          i += tmp - 1;
+          break;
+        case DUP:
+        case BINARY_ADD:
+        case BINARY_SUB:
+        case BINARY_MUL:
+        case BINARY_DIV:
+          break;
+        case CALL:
+          /* byte next to CALL is that functions name length */
+          tmp = vm->bytes[++i];
+          /* skip over the length byte */
+          i++;
+          /* skip over the name */
+          i += tmp - 1;
+          break;
+        case BEGIN_FN:
+          break;
+        case FN_START:
+          /* byte next to FN_START is that functions name length */
+          tmp = vm->bytes[++i];
+          /* skip over the length byte */
+          i++;
+          /* skip over the name */
+          i += tmp - 1;
+          break;
+        case FN_END:
+          break;
+        default:
+          fprintf(stderr, "nvm: error: unknown op 0x%02X at position 0x%02X\n", vm->bytes[i], i);
+          return -1;
+      }
+    }
+    return 0;
+  } else {
+    return -2;
+  }
   /* }}} */
 }
 

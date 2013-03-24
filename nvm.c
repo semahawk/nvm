@@ -450,15 +450,13 @@ static void dispatch(nvm_t *vm)
 #endif
       /* check for overflow */
       if (vm->vars.ptr >= vm->vars.size - 1){
-        printf("%u >= %u\n", vm->vars.ptr, vm->vars.size);
         vm->vars.size += 10;
         vm->vars.stack = realloc(vm->vars.stack, vm->vars.size);
       }
-
+      /* pop from the stack */
       INT FOS = pop(vm);
-
       /* append the variable to the variables list */
-      vm->vars.stack[vm->vars.ptr].name = string;
+      vm->vars.stack[vm->vars.ptr].name = strdup(string);
       vm->vars.stack[vm->vars.ptr].value = FOS;
       vm->vars.ptr++;
       vm->freeer(string);
@@ -626,7 +624,7 @@ static void dispatch(nvm_t *vm)
       }
 
       /* create the stack */
-      new_frame->fn_name = string;
+      new_frame->fn_name = strdup(string);
       new_frame->vars.stack = vm->mallocer(INITIAL_VARS_STACK_SIZE * sizeof(nvm_vars_stack));
       new_frame->vars.ptr = 0;
       new_frame->vars.size = INITIAL_VARS_STACK_SIZE;

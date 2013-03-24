@@ -196,11 +196,13 @@ void nvm_destroy(nvm_t *vm)
   vm->freeer(vm->bytes);
   vm->freeer(vm->vars.stack);
   vm->freeer(vm->funcs.stack);
+  vm->freeer(vm->call_stack.stack);
   vm->freeer(vm);
   vm->stack.stack = NULL;
   vm->bytes = NULL;
   vm->vars.stack = NULL;
   vm->funcs.stack = NULL;
+  vm->call_stack.stack = NULL;
   vm = NULL;
   /* }}} */
 }

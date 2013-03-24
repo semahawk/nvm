@@ -27,6 +27,8 @@
 #define INITIAL_VARS_STACK_SIZE 30
 /* Initial size of the functions stack */
 #define INITIAL_FUNCS_STACK_SIZE 30
+/* Initial size of the call stack */
+#define INITIAL_CALL_STACK_SIZE 10
 
 /*
  * Used for verbosity/debugging purposes.
@@ -57,7 +59,7 @@ typedef struct {
 } nvm_func;
 
 /*
- * NVM type for its stacks.
+ * NVM type for its Main Stack.
  */
 typedef struct {
   /* the stack itself */
@@ -96,9 +98,17 @@ typedef struct {
  * NVM type for its call stack frame.
  */
 typedef struct {
+  /* name of the function that was called */
+  char *fn_name;
   /* stack of local variables for the function call */
   nvm_vars_stack vars;
 } nvm_call_frame;
+
+typedef struct {
+  nvm_call_frame **stack;
+  unsigned ptr;
+  unsigned size;
+} nvm_call_stack;
 
 /*
  * The main type for NVM.
@@ -125,6 +135,8 @@ typedef struct {
   int functions_offset;
   /* functions stack */
   nvm_funcs_stack funcs;
+  /* call stack, every function call goes here */
+  nvm_call_stack call_stack;
 } nvm_t;
 
 /*

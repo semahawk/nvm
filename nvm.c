@@ -180,6 +180,9 @@ nvm_t *nvm_init(const char *filename, void *(*mallocer)(size_t), void (*freeer)(
   vm->funcs.stack      = mallocer(INITIAL_FUNCS_STACK_SIZE * sizeof(nvm_func));
   vm->funcs.size       = INITIAL_FUNCS_STACK_SIZE;
   vm->funcs.ptr        = 0;
+  vm->call_stack.stack = mallocer(INITIAL_CALL_STACK_SIZE * sizeof(nvm_call_stack));
+  vm->call_stack.size  = INITIAL_CALL_STACK_SIZE;
+  vm->call_stack.ptr   = 0;
   vm->functions_offset = -1;
 
   return vm;
@@ -356,7 +359,8 @@ static void dispatch(nvm_t *vm)
       printf("store\t(%s)\n", string);
 #endif
       /* check for overflow */
-      if (vm->vars.ptr >= vm->vars.size){
+      if (vm->vars.ptr >= vm->vars.size - 1){
+        printf("%u >= %u\n", vm->vars.ptr, vm->vars.size);
         vm->vars.size += 10;
         vm->vars.stack = realloc(vm->vars.stack, vm->vars.size);
       }
@@ -481,6 +485,11 @@ static void dispatch(nvm_t *vm)
       /* }}} */
     } case CALL: {
       /* {{{ CALL body */
+      /* prevent too big function calls */
+      if (vm->call_stack.ptr >= 700){
+        fprintf(stderr, "nvm: error: exceeded limit of function calls (700 max)\n");
+        exit(1);
+      }
       /* next byte to CALL byte is the functions name */
       byte_one = vm->bytes[++vm->ip];
       string = vm->mallocer(byte_one + 1);
@@ -502,6 +511,10 @@ static void dispatch(nvm_t *vm)
       int found = 0, old_ip;
       /* new frame for the call */
       nvm_call_frame *new_frame = vm->mallocer(sizeof(nvm_call_frame));
+      if (!new_frame){
+        fprintf(stderr, "nvm: error: malloc failed to allocate %lu bytes at line %d\n", sizeof(nvm_call_frame), __LINE__);
+        exit(1);
+      }
       /* store the old variables stack */
       nvm_vars_stack old_vars_stack = vm->vars;
       /* search for the function */
@@ -519,15 +532,24 @@ static void dispatch(nvm_t *vm)
       }
 
       /* create the stack */
+      new_frame->fn_name = string;
       new_frame->vars.stack = vm->mallocer(INITIAL_VARS_STACK_SIZE * sizeof(nvm_vars_stack));
+      new_frame->vars.ptr = 0;
+      new_frame->vars.size = INITIAL_VARS_STACK_SIZE;
       /* set the variables stack to the newly created one */
-      vm->vars.stack = new_frame->vars.stack;
-      vm->vars.ptr = 0;
-      vm->vars.size = 0;
+      vm->vars = new_frame->vars;
       /* store the old value of the instruction pointer */
       old_ip = vm->ip;
       /* set the instruction pointer to the body of the function */
       vm->ip = i + vm->funcs.stack[func].offset;
+      /* append the call frame to the call stack */
+      /*   but first check for overflow */
+      if (vm->call_stack.ptr >= vm->call_stack.size - 1){
+        vm->call_stack.size += 10;
+        vm->call_stack.stack = realloc(vm->call_stack.stack, vm->call_stack.size);
+      }
+      /*   and finally actually append it */
+      vm->call_stack.stack[vm->call_stack.ptr++] = new_frame;
 #if VERBOSE
       shiftright();
 #endif
@@ -547,10 +569,13 @@ static void dispatch(nvm_t *vm)
       new_frame->vars.stack = NULL;
       vm->freeer(new_frame);
       new_frame = NULL;
+      /* remove the call from the call stack */
+      vm->call_stack.stack[--vm->call_stack.ptr] = NULL;
 #if VERBOSE
       shiftleft();
 #endif
       vm->freeer(string);
+      string = NULL;
       break;
       /* }}} */
     } default: {

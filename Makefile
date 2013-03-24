@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -W -Wall -g -std=c99
+CFLAGS = -W -Wall -g -O0 -std=c99
 OBJS = example.o nvm.o grammar.o
 
 .PHONY: all grammar clean distclean

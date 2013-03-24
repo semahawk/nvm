@@ -52,6 +52,11 @@ static unsigned shiftwidth = 1;
     printf(" ");\
 } while (0);
 
+/* stack (later malloced) of pointer to things that should be freeed after the
+ * program executed */
+static void **tobefreed = NULL;
+static unsigned tobefreed_ptr = 0;
+
 /*
  * name:        load_const
  * description: pushes given <value> to the stack
@@ -146,7 +151,8 @@ static void prerun(nvm_t *vm)
       vm->funcs.stack[vm->funcs.ptr].name = strdup(name);
       vm->funcs.stack[vm->funcs.ptr].offset = i;
       vm->funcs.ptr++;
-      free(name);
+      vm->freeer(name);
+      name = NULL;
     }
   }
   /* }}} */
@@ -184,6 +190,7 @@ nvm_t *nvm_init(const char *filename, void *(*mallocer)(size_t), void (*freeer)(
   vm->call_stack.size  = INITIAL_CALL_STACK_SIZE;
   vm->call_stack.ptr   = 0;
   vm->functions_offset = -1;
+  tobefreed            = mallocer(INITIAL_STACK_SIZE * sizeof(void *));
 
   return vm;
   /* }}} */
@@ -192,6 +199,13 @@ nvm_t *nvm_init(const char *filename, void *(*mallocer)(size_t), void (*freeer)(
 void nvm_destroy(nvm_t *vm)
 {
   /* {{{ nvm_destroy body */
+  /* free everything on the 'tobefreed' stack */
+  for (unsigned i = 0; i < tobefreed_ptr; i++){
+    vm->freeer(tobefreed[i]);
+  }
+  /* free the stack itself */
+  vm->freeer(tobefreed);
+  /* and the rest */
   vm->freeer(vm->stack.stack);
   vm->freeer(vm->bytes);
   vm->freeer(vm->vars.stack);
@@ -595,6 +609,9 @@ static char *strdup(const char *p)
 {
   /* {{{ strdup body */
   char *np = malloc(strlen(p) + 1);
+
+  /* append that string to the tobefreed stack */
+  tobefreed[tobefreed_ptr++] = np;
 
   return np ? strcpy(np, p) : np;
   /* }}} */

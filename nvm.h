@@ -36,6 +36,11 @@
 #define VERBOSE 1
 
 /*
+ * A nice handy macro
+ */
+#define NVM_ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
+
+/*
  * Some handy types.
  */
 typedef unsigned char BYTE;

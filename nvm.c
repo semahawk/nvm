@@ -35,16 +35,10 @@
  */
 
 /* {{{ static funtion declarations */
-static void load_const(nvm_t *virtual_machine, INT value);
-static INT pop(nvm_t *virtual_machine);
-static void discard(nvm_t *virtual_machine);
-static void rot_two(nvm_t *virtual_machine);
-static void rot_three(nvm_t *virtual_machine);
-static void binop(nvm_t *virtual_machine, BYTE operation);
-static void load_name(nvm_t *virtual_machine, char *name);
-static void prerun(nvm_t *virtual_machine);
-static void call(nvm_t *vm, char *name);
-static void dispatch(nvm_t *vm);
+static void  load_const(nvm_t *virtual_machine, INT value);
+static INT   pop(nvm_t *virtual_machine);
+static void  prerun(nvm_t *virtual_machine);
+static void  dispatch(nvm_t *vm);
 static char *strdup(const char *p);
 /* }}} */
 
@@ -89,140 +83,6 @@ static INT pop(nvm_t *vm)
   }
 
   return vm->stack.stack[--vm->stack.ptr];
-  /* }}} */
-}
-
-/*
- * name:        discard
- * description: changes the top-most value on the stack to 0, and reduces stack's size
- *
- *              It differs from `pop` in that it doesn't return anything, and
- *              it's an op in this VM.
- */
-static void discard(nvm_t *vm)
-{
-  /* {{{ discard body */
-  vm->stack.stack[vm->stack.ptr--] = 0;
-  /* }}} */
-}
-
-/*
- * name:        rot_two
- * description: swaps the two top-most values on stack
- */
-static void rot_two(nvm_t *vm)
-{
-  /* {{{ rot_two body */
-  /* First on Stack */
-  INT FOS = pop(vm);
-  /* Second on Stack */
-  INT SOS = pop(vm);
-
-  load_const(vm, FOS);
-  load_const(vm, SOS);
-  /* }}} */
-}
-
-/*
- * name:        rot_three
- * description: lifts second and third stack item one position up, moves top
- *              item down to position three
- */
-static void rot_three(nvm_t *vm)
-{
-  /* {{{ rot_three body */
-  INT FOS = pop(vm);
-  INT SOS = pop(vm);
-  INT TOS = pop(vm);
-
-  load_const(vm, FOS);
-  load_const(vm, TOS);
-  load_const(vm, SOS);
-  /* }}} */
-}
-
-/*
- * name:        store
- * description: stores a variable of a given <name>
- */
-static void store(nvm_t *vm, char *name)
-{
-  /* {{{ store body */
-  /* check for overflow */
-  if (vm->vars.ptr >= vm->vars.size){
-    vm->vars.size += 10;
-    vm->vars.stack = realloc(vm->vars.stack, vm->vars.size);
-  }
-
-  INT FOS = pop(vm);
-
-  vm->vars.stack[vm->vars.ptr].name = name;
-  vm->vars.stack[vm->vars.ptr].value = FOS;
-  vm->vars.ptr++;
-  /* }}}  */
-}
-
-
-/*
- * name:        load_name
- * description: pushes a value of a given variables <name> to the stack
- */
-static void load_name(nvm_t *vm, char *name)
-{
-  /* {{{ load_name body */
-  for (unsigned i = 0; i < vm->vars.ptr; i++){
-    if (!strcmp(vm->vars.stack[i].name, name)){
-      load_const(vm, vm->vars.stack[i].value);
-      return;
-    }
-  }
-
-  fprintf(stderr, "nvm: variable '%s' not found\n", name);
-  exit(1);
-  /* }}}  */
-}
-
-/*
- * name:        dup
- * description: duplicates the FOS
- */
-static void dup(nvm_t *vm)
-{
-  /* {{{ dup body */
-  INT FOS = pop(vm);
-
-  load_const(vm, FOS);
-  load_const(vm, FOS);
-  /* }}} */
-}
-
-/*
- * name:        binop
- * description: pops a value twice, and performs a binary <operation> on those
- *              operands, and pushes the result
- */
-static void binop(nvm_t *vm, BYTE op){
-  /* {{{ binop body */
-  INT FOS = pop(vm);
-  INT SOS = pop(vm);
-  INT result;
-
-  switch (op){
-    case BINARY_ADD:
-      result = SOS + FOS;
-      break;
-    case BINARY_SUB:
-      result = SOS - FOS;
-      break;
-    case BINARY_MUL:
-      result = SOS * FOS;
-      break;
-    case BINARY_DIV:
-      result = SOS / FOS;
-      break;
-  }
-
-  load_const(vm, result);
   /* }}} */
 }
 
@@ -289,65 +149,6 @@ static void prerun(nvm_t *vm)
       free(name);
     }
   }
-  /* }}} */
-}
-
-/*
- * name:        call
- * description: calls a function
- * parameters:  name - name of the function
- */
-static void call(nvm_t *vm, char *name)
-{
-  /* {{{ call body */
-  unsigned func, i = vm->functions_offset;
-  int found = 0, old_ip;
-  /* new frame for the call */
-  nvm_call_frame *new_frame = vm->mallocer(sizeof(nvm_call_frame));
-  /* store the old variables stack */
-  nvm_vars_stack old_vars_stack = vm->vars;
-  /* search for the function */
-  for (func = 0; func < vm->funcs.ptr; func++){
-    /* found it */
-    if (!strcmp(name, vm->funcs.stack[func].name)){
-      found = 1;
-      break;
-    }
-  }
-
-  if (!found){
-    printf("nvm: error: function '%s' not found\n", name);
-    exit(1);
-  }
-
-  /* create the stack */
-  new_frame->vars.stack = vm->mallocer(INITIAL_VARS_STACK_SIZE * sizeof(nvm_vars_stack));
-  /* set the variables stack to the newly created one */
-  vm->vars.stack = new_frame->vars.stack;
-  vm->vars.ptr = 0;
-  vm->vars.size = 0;
-  /* store the old value of the instruction pointer */
-  old_ip = vm->ip;
-  /* set the instruction pointer to the body of the function */
-  vm->ip = i + vm->funcs.stack[func].offset;
-  shiftright();
-  /* execute the WHOLE body */
-  while (vm->bytes[vm->ip] != FN_END){
-    dispatch(vm);
-    vm->ip++;
-  }
-  /* restore the last position of the instruction, before calling, so it could
-   * move on with the code */
-  /* XXX, why do I have to decrement old_ip by two, to make it work? */
-  vm->ip = (old_ip -= 2);
-  /* restore the old variables stack */
-  vm->vars = old_vars_stack;
-  /* free the functions call stack */
-  vm->freeer(new_frame->vars.stack);
-  new_frame->vars.stack = NULL;
-  vm->freeer(new_frame);
-  new_frame = NULL;
-  shiftleft();
   /* }}} */
 }
 
@@ -448,8 +249,8 @@ static void dispatch(nvm_t *vm)
   int j = 0;
 
   switch (vm->bytes[vm->ip]){
-    /* {{{ main op switch */
-    case NOP:
+    case NOP: {
+      /* {{{ NOP body */
       /* that was tough */
 #if VERBOSE
       printf("%04x:", vm->ip);
@@ -457,7 +258,9 @@ static void dispatch(nvm_t *vm)
       printf("nop\n");
 #endif
       break;
-    case LOAD_CONST:
+      /* }}} */
+    } case LOAD_CONST: {
+      /* {{{ LOAD_CONST body */
       /* extract the bytes */
       byte_one   = vm->bytes[vm->ip + 1];
       byte_two   = vm->bytes[vm->ip + 2] << 2;
@@ -476,40 +279,64 @@ static void dispatch(nvm_t *vm)
 
       load_const(vm, value);
       break;
-    case DISCARD:
+      /* }}} */
+    } case DISCARD: {
+      /* {{{ DISCARD body */
 #if VERBOSE
       printf("%04x:", vm->ip);
       print_spaces();
       printf("discard\n");
 #endif
-      discard(vm);
+      /* check for underflow */
+      if (vm->stack.ptr <= 0){
+        fprintf(stderr, "nvm: error: try to discard a value on an empty stack\n");
+        exit(1);
+      }
+      /* discard it */
+      vm->stack.stack[vm->stack.ptr--] = 0;
       break;
-    case ROT_TWO:
+      /* }}} */
+    } case ROT_TWO: {
+      /* {{{ ROT_TWO body */
 #if VERBOSE
       printf("%04x:", vm->ip);
       print_spaces();
       printf("rot_two\n");
 #endif
-      rot_two(vm);
+      /* First on Stack */
+      INT FOS = pop(vm);
+      /* Second on Stack */
+      INT SOS = pop(vm);
+      /* Load'em all */
+      load_const(vm, FOS);
+      load_const(vm, SOS);
       break;
-    case ROT_THREE:
+      /* }}} */
+    } case ROT_THREE: {
+      /* {{{ ROT_THREE body */
 #if VERBOSE
       printf("%04x:", vm->ip);
       print_spaces();
       printf("rot_three\n");
 #endif
-      rot_three(vm);
+      /* Pop'em all */
+      INT FOS = pop(vm);
+      INT SOS = pop(vm);
+      INT TOS = pop(vm);
+      /* Load'em all */
+      load_const(vm, FOS);
+      load_const(vm, TOS);
+      load_const(vm, SOS);
       break;
-    case STORE:
-      /* I don't want to declare any additional variables, so I'm using
-       * 'byte_one', but calling it 'length' makes more sense */
-#define length byte_one
-
-      length = vm->bytes[++vm->ip];
-      string = vm->mallocer(length + 1);
+      /* }}} */
+    } case STORE: {
+      /* {{{ STORE body */
+      /* byte next to STORE is that variables name length */
+      byte_one = vm->bytes[++vm->ip];
+      string = vm->mallocer(byte_one + 1);
 
       if (!string){
-        fprintf(stderr, "malloc: failed to allocate %d bytes.\n", length);
+        fprintf(stderr, "malloc: failed to allocate %d bytes.\n", byte_one);
         return;
       }
 
@@ -517,31 +344,41 @@ static void dispatch(nvm_t *vm)
       vm->ip++;
       /* getting the variables name, iterating through the <length> next
        * numbers */
-      for (j = 0; j < length; j++){
+      for (j = 0; j < byte_one; j++){
         string[j] = vm->bytes[vm->ip + j];
       }
       string[j] = '\0';
       /* skip over the bytes */
-      vm->ip += length - 1;
-
-#undef length
+      vm->ip += byte_one - 1;
 #if VERBOSE
       printf("%04x:", vm->ip);
       print_spaces();
       printf("store\t(%s)\n", string);
 #endif
-      store(vm, strdup(string));
+      /* check for overflow */
+      if (vm->vars.ptr >= vm->vars.size){
+        vm->vars.size += 10;
+        vm->vars.stack = realloc(vm->vars.stack, vm->vars.size);
+      }
+
+      INT FOS = pop(vm);
+
+      /* append the variable to the variables list */
+      vm->vars.stack[vm->vars.ptr].name = string;
+      vm->vars.stack[vm->vars.ptr].value = FOS;
+      vm->vars.ptr++;
       vm->freeer(string);
       string = NULL;
       break;
-    case LOAD_NAME:
-      /* Some trick over here */
-#define length byte_one
-      length = vm->bytes[++vm->ip];
-      string = vm->mallocer(length + 1);
+      /* }}} */
+    } case LOAD_NAME: {
+      /* {{{ LOAD_NAME body */
+      /* byte next to LOAD_NAME is that name's length */
+      byte_one = vm->bytes[++vm->ip];
+      string = vm->mallocer(byte_one + 1);
 
       if (!string){
-        fprintf(stderr, "malloc: failed to allocate %d bytes.\n", length);
+        fprintf(stderr, "malloc: failed to allocate %d bytes.\n", byte_one);
         return;
       }
 
@@ -549,94 +386,182 @@ static void dispatch(nvm_t *vm)
       vm->ip++;
       /* getting the variables name, iterating through the <length> next
        * numbers */
-      for (j = 0; j < length; j++){
+      for (j = 0; j < byte_one; j++){
         string[j] = vm->bytes[vm->ip + j];
       }
       string[j] = '\0';
       /* skip over the bytes */
-      vm->ip += length - 1;
-
+      vm->ip += byte_one - 1;
 #if VERBOSE
       printf("%04x:", vm->ip);
       print_spaces();
       printf("get\t(%s)\n", string);
 #endif
-#undef length
-      load_name(vm, strdup(string));
+      int found = 0;
+      /* iterate through the variables list */
+      for (unsigned i = 0; i < vm->vars.ptr; i++){
+        /* we found the variable */
+        if (!strcmp(vm->vars.stack[i].name, string)){
+          /* push its value onto the stack */
+          load_const(vm, vm->vars.stack[i].value);
+          found = 1;
+          break;
+        }
+      }
+      /* inform if we have not found the variable */
+      if (!found){
+        fprintf(stderr, "nvm: variable '%s' not found\n", string);
+        exit(1);
+      }
       vm->freeer(string);
       string = NULL;
       break;
-    case DUP:
+      /* }}} */
+    } case DUP: {
+      /* {{{ DUP body */
 #if VERBOSE
       printf("%04x:", vm->ip);
       print_spaces();
       printf("dup\n");
 #endif
-      dup(vm);
+      /* Pop the top-most value */
+      INT FOS = pop(vm);
+      /* Put it twice to the stack */
+      load_const(vm, FOS);
+      load_const(vm, FOS);
       break;
-    case BINARY_ADD:
+      /* }}} */
+    } case BINARY_ADD: {
+      /* {{{ BINARY_ADD body */
 #if VERBOSE
       printf("%04x:", vm->ip);
       print_spaces();
       printf("add\n");
 #endif
-      binop(vm, vm->bytes[vm->ip]);
+      INT FOS = pop(vm);
+      INT SOS = pop(vm);
+      load_const(vm, SOS + FOS);
       break;
-    case BINARY_SUB:
+      /* }}} */
+    } case BINARY_SUB: {
+      /* {{{ BINARY_SUB body */
 #if VERBOSE
       printf("%04x:", vm->ip);
       print_spaces();
       printf("sub\n");
 #endif
-      binop(vm, vm->bytes[vm->ip]);
+      INT FOS = pop(vm);
+      INT SOS = pop(vm);
+      load_const(vm, SOS - FOS);
       break;
-    case BINARY_MUL:
+      /* }}} */
+    } case BINARY_MUL: {
+      /* {{{ BINARY_MUL body */
 #if VERBOSE
       printf("%04x:", vm->ip);
       print_spaces();
       printf("mul\n");
 #endif
-      binop(vm, vm->bytes[vm->ip]);
+      INT FOS = pop(vm);
+      INT SOS = pop(vm);
+      load_const(vm, SOS * FOS);
       break;
-    case BINARY_DIV:
+      /* }}} */
+    } case BINARY_DIV: {
+      /* {{{ BINARY_DIV body */
 #if VERBOSE
       printf("%04x:", vm->ip);
       print_spaces();
       printf("div\n");
 #endif
-      binop(vm, vm->bytes[vm->ip]);
+      INT FOS = pop(vm);
+      INT SOS = pop(vm);
+      load_const(vm, SOS / FOS);
       break;
-    case CALL:
-#define length byte_one
-      length = vm->bytes[++vm->ip];
-      string = vm->mallocer(length + 1);
+      /* }}} */
+    } case CALL: {
+      /* {{{ CALL body */
+      /* next byte to CALL byte is the functions name */
+      byte_one = vm->bytes[++vm->ip];
+      string = vm->mallocer(byte_one + 1);
       /* skip over the length byte */
       vm->ip++;
       /* get the name */
-      for (j = 0; j < length; j++){
+      for (j = 0; j < byte_one; j++){
         string[j] = vm->bytes[vm->ip + j];
       }
       string[j] = '\0';
       /* skip over the bytes */
-      vm->ip += length + 1;
-
+      vm->ip += byte_one + 1;
 #if VERBOSE
       printf("%04x:", vm->ip);
       print_spaces();
       printf("call\t(%s)\n", string);
 #endif
-#undef  length
-      call(vm, strdup(string));
+      unsigned func, i = vm->functions_offset;
+      int found = 0, old_ip;
+      /* new frame for the call */
+      nvm_call_frame *new_frame = vm->mallocer(sizeof(nvm_call_frame));
+      /* store the old variables stack */
+      nvm_vars_stack old_vars_stack = vm->vars;
+      /* search for the function */
+      for (func = 0; func < vm->funcs.ptr; func++){
+        /* found it */
+        if (!strcmp(string, vm->funcs.stack[func].name)){
+          found = 1;
+          break;
+        }
+      }
+
+      if (!found){
+        printf("nvm: error: function '%s' not found\n", string);
+        exit(1);
+      }
+
+      /* create the stack */
+      new_frame->vars.stack = vm->mallocer(INITIAL_VARS_STACK_SIZE * sizeof(nvm_vars_stack));
+      /* set the variables stack to the newly created one */
+      vm->vars.stack = new_frame->vars.stack;
+      vm->vars.ptr = 0;
+      vm->vars.size = 0;
+      /* store the old value of the instruction pointer */
+      old_ip = vm->ip;
+      /* set the instruction pointer to the body of the function */
+      vm->ip = i + vm->funcs.stack[func].offset;
+#if VERBOSE
+      shiftright();
+#endif
+      /* execute the WHOLE body */
+      while (vm->bytes[vm->ip] != FN_END){
+        dispatch(vm);
+        vm->ip++;
+      }
+      /* restore the last position of the instruction, before calling, so it could
+       * move on with the code */
+      /* XXX, why do I have to decrement old_ip by two, to make it work? */
+      vm->ip = (old_ip -= 2);
+      /* restore the old variables stack */
+      vm->vars = old_vars_stack;
+      /* free the functions call stack */
+      vm->freeer(new_frame->vars.stack);
+      new_frame->vars.stack = NULL;
+      vm->freeer(new_frame);
+      new_frame = NULL;
+#if VERBOSE
+      shiftleft();
+#endif
       vm->freeer(string);
       break;
-    default:
-      printf("%04x: error: unknown op: %d (%08X)\n", vm->ip, vm->bytes[vm->ip], vm->bytes[vm->ip]);
+      /* }}} */
+    } default: {
+      /* {{{ unknown opcode */
+      printf("nvm: error: unknown op 0x%02X at position 0x%02X\n", vm->bytes[vm->ip], vm->ip);
       /* you failed the game */
-      return;
-      break;
-    /* }}} */
+      exit(1);
+      /* }}} */
+    }
   }
-  /* }}} */
+  /* }}} dispatch end */
 }
 
 static char *strdup(const char *p)
@@ -650,7 +575,7 @@ static char *strdup(const char *p)
 
 /*
  * Helloween, Rhapsody of Fire, Avantasia, Edguy, Iron Savior
- * Michael Schenker Group, Testament
+ * Running Wild, Michael Schenker Group, Testament
  *
  * The Office, Family Guy
  *

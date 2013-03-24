@@ -352,6 +352,9 @@ static void dispatch(nvm_t *vm)
       /* }}} */
     } case LOAD_CONST: {
       /* {{{ LOAD_CONST body */
+#if VERBOSE
+      printf("%04x:", vm->ip);
+#endif
       /* extract the bytes */
       byte_one   = vm->bytes[vm->ip + 1];
       byte_two   = vm->bytes[vm->ip + 2] << 2;
@@ -361,13 +364,10 @@ static void dispatch(nvm_t *vm)
       value = byte_one ^ byte_two ^ byte_three ^ byte_four;
       /* skip over the bytes */
       vm->ip += 4;
-
 #if VERBOSE
-      printf("%04x:", vm->ip);
       print_spaces();
-      printf("push\t(%d)\n", value);
+      printf("load_const\t(%d)\n", value);
 #endif
-
       load_const(vm, value);
       break;
       /* }}} */
@@ -422,6 +422,9 @@ static void dispatch(nvm_t *vm)
       /* }}} */
     } case STORE: {
       /* {{{ STORE body */
+#if VERBOSE
+      printf("%04x:", vm->ip);
+#endif
       /* byte next to STORE is that variables name length */
       byte_one = vm->bytes[++vm->ip];
       string = vm->mallocer(byte_one + 1);
@@ -442,9 +445,8 @@ static void dispatch(nvm_t *vm)
       /* skip over the bytes */
       vm->ip += byte_one - 1;
 #if VERBOSE
-      printf("%04x:", vm->ip);
       print_spaces();
-      printf("store\t(%s)\n", string);
+      printf("store\t\t(%s)\n", string);
 #endif
       /* check for overflow */
       if (vm->vars.ptr >= vm->vars.size - 1){
@@ -465,6 +467,9 @@ static void dispatch(nvm_t *vm)
       /* }}} */
     } case LOAD_NAME: {
       /* {{{ LOAD_NAME body */
+#if VERBOSE
+      printf("%04x:", vm->ip);
+#endif
       /* byte next to LOAD_NAME is that name's length */
       byte_one = vm->bytes[++vm->ip];
       string = vm->mallocer(byte_one + 1);
@@ -485,9 +490,8 @@ static void dispatch(nvm_t *vm)
       /* skip over the bytes */
       vm->ip += byte_one - 1;
 #if VERBOSE
-      printf("%04x:", vm->ip);
       print_spaces();
-      printf("get\t(%s)\n", string);
+      printf("load_name\t\t(%s)\n", string);
 #endif
       int found = 0;
       /* iterate through the variables list */
@@ -573,6 +577,9 @@ static void dispatch(nvm_t *vm)
       /* }}} */
     } case CALL: {
       /* {{{ CALL body */
+#if VERBOSE
+      printf("%04x:", vm->ip);
+#endif
       /* prevent too big function calls */
       if (vm->call_stack.ptr >= 700){
         fprintf(stderr, "nvm: error: exceeded limit of function calls (700 max)\n");
@@ -591,9 +598,8 @@ static void dispatch(nvm_t *vm)
       /* skip over the bytes */
       vm->ip += byte_one + 1;
 #if VERBOSE
-      printf("%04x:", vm->ip);
       print_spaces();
-      printf("call\t(%s)\n", string);
+      printf("call\t\t(%s)\n", string);
 #endif
       unsigned func, i = vm->functions_offset;
       int found = 0, old_ip;

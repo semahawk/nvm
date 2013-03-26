@@ -22,7 +22,7 @@
 /*
  * Initial size of the stack.
  */
-#define INITIAL_STACK_SIZE 10
+#define INITIAL_STACK_SIZE 40
 /* Initial size of the variables stack */
 #define INITIAL_VARS_STACK_SIZE 30
 /* Initial size of the functions stack */
@@ -104,11 +104,22 @@ typedef struct {
   nvm_vars_stack vars;
 } nvm_call_frame;
 
+/*
+ * NVM type for its call stack.
+ */
 typedef struct {
   nvm_call_frame **stack;
   unsigned ptr;
   unsigned size;
 } nvm_call_stack;
+
+/*
+ * NVM type for its stack of pointer to be freed at the end of execution.
+ */
+typedef struct _nvm_free_stack {
+  void *ptr;
+  struct _nvm_free_stack *next;
+} nvm_free_stack;
 
 /*
  * The main type for NVM.
@@ -137,6 +148,8 @@ typedef struct {
   nvm_funcs_stack funcs;
   /* call stack, every function call goes here */
   nvm_call_stack call_stack;
+  /* pointer to the first element of free stack (with things to be free'd) */
+  nvm_free_stack *free_stack;
 } nvm_t;
 
 /*

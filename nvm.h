@@ -71,13 +71,11 @@ typedef struct {
 /*
  * NVM type for its variables stack.
  */
-typedef struct {
-  /* the stack itself */
-  nvm_var *stack;
-  /* 'pointer' to the current element */
-  unsigned ptr;
-  /* size of the stack */
-  unsigned size;
+typedef struct _nvm_vars_stack {
+  /* a pointer to the var itself */
+  nvm_var *var;
+  /* a pointer to the next element on the list */
+  struct _nvm_vars_stack *next;
 } nvm_vars_stack;
 
 /*
@@ -99,7 +97,7 @@ typedef struct _nvm_call_frame {
   /* name of the function that was called */
   char *fn_name;
   /* stack of local variables for the function call */
-  nvm_vars_stack vars;
+  nvm_vars_stack *vars;
   /* a pointer to the next element of a linked list */
   struct _nvm_call_frame *next;
   /* a pointer to the previous element of a linked list */
@@ -142,8 +140,8 @@ typedef struct {
   int ip;
   /* The Stack */
   nvm_stack stack;
-  /* variables stack */
-  nvm_vars_stack vars;
+  /* pointer to the first element of the variables stack */
+  nvm_vars_stack *vars;
   /* functions offset (it's not unsigned because I'm using -1 later on for
      error-like purposes) */
   int functions_offset;

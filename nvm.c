@@ -175,9 +175,7 @@ nvm_t *nvm_init(const char *filename, void *(*mallocer)(size_t), void (*freeer)(
   vm->stack.stack      = mallocer(INITIAL_STACK_SIZE * sizeof(INT));
   vm->stack.size       = INITIAL_STACK_SIZE;
   vm->stack.ptr        = 0;
-  vm->vars.stack       = mallocer(INITIAL_VARS_STACK_SIZE * sizeof(nvm_var));
-  vm->vars.size        = INITIAL_VARS_STACK_SIZE;
-  vm->vars.ptr         = 0;
+  vm->vars             = NULL;
   vm->funcs.stack      = mallocer(INITIAL_FUNCS_STACK_SIZE * sizeof(nvm_func));
   vm->funcs.size       = INITIAL_FUNCS_STACK_SIZE;
   vm->funcs.ptr        = 0;
@@ -214,15 +212,19 @@ void nvm_destroy(nvm_t *vm)
   }
   /* and the stack itself */
   vm->freeer(vm->free_stack);
+  /* free everything on the variables stack */
+  for (nvm_vars_stack *p = vm->vars; p != NULL; p = p->next){
+    vm->freeer(p);
+  }
+  /* free every other stack */
   vm->freeer(vm->stack.stack);
   vm->freeer(vm->bytes);
-  vm->freeer(vm->vars.stack);
   vm->freeer(vm->funcs.stack);
   vm->freeer(vm->call_stack);
   vm->freeer(vm);
   vm->stack.stack = NULL;
   vm->bytes = NULL;
-  vm->vars.stack = NULL;
+  vm->vars = NULL;
   vm->funcs.stack = NULL;
   vm->call_stack = NULL;
   vm = NULL;
@@ -420,9 +422,7 @@ static void dispatch(nvm_t *vm)
       printf("%04x:", vm->ip);
 #endif
       /* byte next to STORE is that variables name length */
-      ++vm->ip;
-      printf("byte_one = %02X\n", vm->bytes[vm->ip]);
-      byte_one = vm->bytes[vm->ip];
+      byte_one = vm->bytes[++vm->ip];
       string = vm->mallocer(byte_one + 1);
 
       if (!string){
@@ -444,17 +444,17 @@ static void dispatch(nvm_t *vm)
       print_spaces();
       printf("store\t\t(%s)\n", string);
 #endif
-      /* check for overflow */
-      if (vm->vars.ptr >= vm->vars.size - 1){
-        vm->vars.size += 10;
-        vm->vars.stack = realloc(vm->vars.stack, vm->vars.size);
-      }
-      /* pop from the stack */
-      INT FOS = pop(vm);
+      /* create variable and its place in the list */
+      nvm_vars_stack *new_stack = vm->mallocer(sizeof(nvm_vars_stack));
+      nvm_var *new_var = vm->mallocer(sizeof(nvm_var));
+      /* set things */
+      new_stack->var = new_var;
+      new_var->name = strdup(vm, string);
+      new_var->value = pop(vm);
       /* append the variable to the variables list */
-      vm->vars.stack[vm->vars.ptr].name = strdup(vm, string);
-      vm->vars.stack[vm->vars.ptr].value = FOS;
-      vm->vars.ptr++;
+      new_stack->next = vm->vars;
+      vm->vars = new_stack;
+      /*printf("storing variable '%s' %p into the stack at %p\n", new_var->name, (void*)new_var->name, (void*)vm->vars);*/
       vm->freeer(string);
       string = NULL;
       break;
@@ -489,11 +489,12 @@ static void dispatch(nvm_t *vm)
 #endif
       int found = 0;
       /* iterate through the variables list */
-      for (unsigned i = 0; i < vm->vars.ptr; i++){
+      for (nvm_vars_stack *p = vm->vars; p != NULL; p = p->next){
+        /*printf("found variable '%s' %p in the stack at %p\n", p->var->name, (void*)p->var->name, (void*)vm->vars);*/
         /* we found the variable */
-        if (!strcmp(vm->vars.stack[i].name, string)){
+        if (!strcmp(p->var->name, string)){
           /* push its value onto the stack */
-          load_const(vm, vm->vars.stack[i].value);
+          load_const(vm, p->var->value);
           found = 1;
           break;
         }
@@ -604,7 +605,7 @@ static void dispatch(nvm_t *vm)
         exit(1);
       }
       /* store the old variables stack */
-      nvm_vars_stack old_vars_stack = vm->vars;
+      nvm_vars_stack *old_vars_stack = vm->vars;
       /* search for the function */
       for (func = 0; func < vm->funcs.ptr; func++){
         /* found it */
@@ -621,6 +622,7 @@ static void dispatch(nvm_t *vm)
 
       /* set the frames name */
       new_frame->fn_name = strdup(vm, string);
+      new_frame->vars = NULL;
       /* set the variables stack to the newly created one */
       vm->vars = new_frame->vars;
       /* store the old value of the instruction pointer */
@@ -656,17 +658,28 @@ static void dispatch(nvm_t *vm)
       /* restore the old variables stack */
       vm->vars = old_vars_stack;
       /* free the functions call stack */
-      vm->freeer(new_frame->vars.stack);
-      new_frame->vars.stack = NULL;
-      vm->freeer(new_frame);
-      new_frame = NULL;
+      for (nvm_vars_stack *p = new_frame->vars; p != NULL; p = p->next){
+        vm->freeer(p->var);
+        p->var = NULL;
+        vm->freeer(p);
+        p = NULL;
+      }
+      /* free the string */
       vm->freeer(string);
       string = NULL;
       /* remove the call from the call stack */
-      vm->call_stack->head->prev->next = vm->call_stack->head->next;
-      nvm_call_frame *tmp = vm->call_stack->head->prev;
-      vm->freeer(vm->call_stack->head);
-      vm->call_stack->head = tmp;
+      /*   there is only one element left */
+      if (vm->call_stack->head == vm->call_stack->tail){
+        vm->freeer(vm->call_stack->head);
+        vm->call_stack->head = NULL;
+        vm->call_stack->tail = NULL;
+      /*   there is more than one element on the stack */
+      } else {
+        vm->call_stack->head->prev->next = vm->call_stack->head->next;
+        nvm_call_frame *tmp = vm->call_stack->head->prev;
+        vm->freeer(vm->call_stack->head);
+        vm->call_stack->head = tmp;
+      }
 #if VERBOSE
       shiftleft();
 #endif

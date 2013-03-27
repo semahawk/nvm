@@ -27,8 +27,6 @@
 #define INITIAL_VARS_STACK_SIZE 30
 /* Initial size of the functions stack */
 #define INITIAL_FUNCS_STACK_SIZE 30
-/* Initial size of the call stack */
-#define INITIAL_CALL_STACK_SIZE 10
 
 /*
  * Used for verbosity/debugging purposes.
@@ -97,20 +95,25 @@ typedef struct {
 /*
  * NVM type for its call stack frame.
  */
-typedef struct {
+typedef struct _nvm_call_frame {
   /* name of the function that was called */
   char *fn_name;
   /* stack of local variables for the function call */
   nvm_vars_stack vars;
+  /* a pointer to the next element of a linked list */
+  struct _nvm_call_frame *next;
+  /* a pointer to the previous element of a linked list */
+  struct _nvm_call_frame *prev;
 } nvm_call_frame;
 
 /*
  * NVM type for its call stack.
  */
-typedef struct {
-  nvm_call_frame **stack;
-  unsigned ptr;
-  unsigned size;
+typedef struct _nvm_call_stack {
+  /* a pointer to the first call frame in the list */
+  nvm_call_frame *head;
+  /* a pointer to the last call frame in the list */
+  nvm_call_frame *tail;
 } nvm_call_stack;
 
 /*
@@ -147,7 +150,7 @@ typedef struct {
   /* functions stack */
   nvm_funcs_stack funcs;
   /* call stack, every function call goes here */
-  nvm_call_stack call_stack;
+  nvm_call_stack *call_stack;
   /* pointer to the first element of free stack (with things to be free'd) */
   nvm_free_stack *free_stack;
 } nvm_t;

@@ -181,9 +181,9 @@ nvm_t *nvm_init(const char *filename, void *(*mallocer)(size_t), void (*freeer)(
   vm->funcs.stack      = mallocer(INITIAL_FUNCS_STACK_SIZE * sizeof(nvm_func));
   vm->funcs.size       = INITIAL_FUNCS_STACK_SIZE;
   vm->funcs.ptr        = 0;
-  vm->call_stack.stack = mallocer(INITIAL_CALL_STACK_SIZE * sizeof(nvm_call_stack));
-  vm->call_stack.size  = INITIAL_CALL_STACK_SIZE;
-  vm->call_stack.ptr   = 0;
+  vm->call_stack       = mallocer(sizeof(nvm_call_stack));
+  vm->call_stack->head = NULL;
+  vm->call_stack->tail = NULL;
   vm->functions_offset = -1;
   vm->free_stack       = NULL;
 
@@ -218,13 +218,13 @@ void nvm_destroy(nvm_t *vm)
   vm->freeer(vm->bytes);
   vm->freeer(vm->vars.stack);
   vm->freeer(vm->funcs.stack);
-  vm->freeer(vm->call_stack.stack);
+  vm->freeer(vm->call_stack);
   vm->freeer(vm);
   vm->stack.stack = NULL;
   vm->bytes = NULL;
   vm->vars.stack = NULL;
   vm->funcs.stack = NULL;
-  vm->call_stack.stack = NULL;
+  vm->call_stack = NULL;
   vm = NULL;
   /* }}} */
 }
@@ -330,7 +330,7 @@ static void dispatch(nvm_t *vm)
   INT value;
   /* used to retrieve variables names */
   char *string = NULL;
-  /* additional counter (it's here because GCC complains about redefining it) */
+  /* additional counter */
   int j = 0;
 
   switch (vm->bytes[vm->ip]){
@@ -420,7 +420,9 @@ static void dispatch(nvm_t *vm)
       printf("%04x:", vm->ip);
 #endif
       /* byte next to STORE is that variables name length */
-      byte_one = vm->bytes[++vm->ip];
+      ++vm->ip;
+      printf("byte_one = %02X\n", vm->bytes[vm->ip]);
+      byte_one = vm->bytes[vm->ip];
       string = vm->mallocer(byte_one + 1);
 
       if (!string){
@@ -573,10 +575,10 @@ static void dispatch(nvm_t *vm)
       printf("%04x:", vm->ip);
 #endif
       /* prevent too big function calls */
-      if (vm->call_stack.ptr >= 700){
-        fprintf(stderr, "nvm: error: exceeded limit of function calls (700 max)\n");
-        exit(1);
-      }
+      /*if (vm->call_stack.ptr >= 700){*/
+        /*fprintf(stderr, "nvm: error: exceeded limit of function calls (700 max)\n");*/
+        /*exit(1);*/
+      /*}*/
       /* next byte to CALL byte is the functions name */
       byte_one = vm->bytes[++vm->ip];
       string = vm->mallocer(byte_one + 1);
@@ -598,7 +600,7 @@ static void dispatch(nvm_t *vm)
       /* new frame for the call */
       nvm_call_frame *new_frame = vm->mallocer(sizeof(nvm_call_frame));
       if (!new_frame){
-        fprintf(stderr, "nvm: error: malloc failed to allocate %lu bytes at line %d\n", sizeof(nvm_call_frame), __LINE__);
+        fprintf(stderr, "nvm: error: malloc failed to allocate %lu bytes at line %d\n", sizeof(nvm_call_frame), __LINE__ - 2);
         exit(1);
       }
       /* store the old variables stack */
@@ -617,11 +619,8 @@ static void dispatch(nvm_t *vm)
         exit(1);
       }
 
-      /* create the stack */
+      /* set the frames name */
       new_frame->fn_name = strdup(vm, string);
-      new_frame->vars.stack = vm->mallocer(INITIAL_VARS_STACK_SIZE * sizeof(nvm_vars_stack));
-      new_frame->vars.ptr = 0;
-      new_frame->vars.size = INITIAL_VARS_STACK_SIZE;
       /* set the variables stack to the newly created one */
       vm->vars = new_frame->vars;
       /* store the old value of the instruction pointer */
@@ -629,13 +628,19 @@ static void dispatch(nvm_t *vm)
       /* set the instruction pointer to the body of the function */
       vm->ip = i + vm->funcs.stack[func].offset;
       /* append the call frame to the call stack */
-      /*   but first check for overflow */
-      if (vm->call_stack.ptr >= vm->call_stack.size - 1){
-        vm->call_stack.size += 10;
-        vm->call_stack.stack = realloc(vm->call_stack.stack, vm->call_stack.size);
+      /*   the list is NOT empty */
+      if (vm->call_stack->head && vm->call_stack->tail){
+        new_frame->next = vm->call_stack->head->next;
+        vm->call_stack->head->next = new_frame;
+        new_frame->prev = vm->call_stack->head;
+        vm->call_stack->head = new_frame;
+      /*   appending to the empty list */
+      } else {
+        new_frame->next = vm->call_stack->head;
+        new_frame->prev = vm->call_stack->tail;
+        vm->call_stack->head = new_frame;
+        vm->call_stack->tail = new_frame;
       }
-      /*   and finally actually append it */
-      vm->call_stack.stack[vm->call_stack.ptr++] = new_frame;
 #if VERBOSE
       shiftright();
 #endif
@@ -655,13 +660,16 @@ static void dispatch(nvm_t *vm)
       new_frame->vars.stack = NULL;
       vm->freeer(new_frame);
       new_frame = NULL;
+      vm->freeer(string);
+      string = NULL;
       /* remove the call from the call stack */
-      vm->call_stack.stack[--vm->call_stack.ptr] = NULL;
+      vm->call_stack->head->prev->next = vm->call_stack->head->next;
+      nvm_call_frame *tmp = vm->call_stack->head->prev;
+      vm->freeer(vm->call_stack->head);
+      vm->call_stack->head = tmp;
 #if VERBOSE
       shiftleft();
 #endif
-      vm->freeer(string);
-      string = NULL;
       break;
       /* }}} */
     } default: {
@@ -680,13 +688,13 @@ static char *strdup(nvm_t *vm, const char *p)
   /* {{{ strdup body */
   char *np = malloc(strlen(p) + 1);
   if (!np){
-    fprintf(stderr, "nvm: malloc failed to allocate %lu bytes at line %d\n", strlen(p) + 1, __LINE__ - 3);
+    fprintf(stderr, "nvm: malloc failed to allocate %lu bytes at line %d\n", strlen(p) + 1, __LINE__ - 2);
     exit(1);
   }
 
   nvm_free_stack *new = malloc(sizeof(nvm_free_stack));
   if (!new){
-    fprintf(stderr, "nvm: malloc failed to allocate %lu bytes at line %d\n", sizeof(nvm_free_stack), __LINE__ - 3);
+    fprintf(stderr, "nvm: malloc failed to allocate %lu bytes at line %d\n", sizeof(nvm_free_stack), __LINE__ - 2);
     exit(1);
   }
 

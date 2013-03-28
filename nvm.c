@@ -143,29 +143,20 @@ static void prerun(nvm_t *vm)
   char *name;
   int i, j;
   BYTE length;
-  /* search for the BF (Begin Functions) byte */
-  for (i = 0; i < vm->bytes_count; i++){
-    if (vm->bytes[i] == BEGIN_FN){
-      /* found it */
-      vm->functions_offset = i;
-      break;
-    }
-  }
-
-  /* start from 1 to skip over the BF byte */
-  for (i = 1; i < vm->bytes_count - vm->functions_offset; i++){
+  /* start from 3 to skip over version */
+  for (i = 3; i < vm->bytes_count; i++){
     /* found a function definition */
-    if (vm->bytes[i + vm->functions_offset] == FN_START){
+    if (vm->bytes[i] == FN_START){
       /* skip over FN_START */
       i++;
       /* get the length */
-      length = vm->bytes[i + vm->functions_offset];
+      length = vm->bytes[i];
       name = vm->mallocer(length + 1);
       /* skip over the length byte */
       i++;
       /* get the name */
       for (j = 0; j < length; j++){
-        name[j] = vm->bytes[i + vm->functions_offset + j];
+        name[j] = vm->bytes[i + j];
       }
       name[j] = '\0';
       /* skip over the whole name */
@@ -210,7 +201,6 @@ nvm_t *nvm_init(const char *filename, void *(*mallocer)(size_t), void (*freeer)(
   vm->call_stack       = mallocer(sizeof(nvm_call_stack));
   vm->call_stack->head = NULL;
   vm->call_stack->tail = NULL;
-  vm->functions_offset = -1;
   vm->free_stack       = NULL;
 
   /* initialize the bytes */
@@ -275,7 +265,7 @@ int nvm_blastoff(nvm_t *vm)
 
   /* we start from 3 to skip over the version
      we end   at functions offset */
-  for (vm->ip = 3; vm->ip < vm->functions_offset; vm->ip++){
+  for (vm->ip = 3; vm->ip < vm->bytes_count; vm->ip++){
     dispatch(vm);
   }
 
@@ -329,8 +319,6 @@ int nvm_validate(nvm_t *vm)
           i++;
           /* skip over the name */
           i += tmp - 1;
-          break;
-        case BEGIN_FN:
           break;
         case FN_START:
           /* byte next to FN_START is that functions name length */
@@ -680,7 +668,7 @@ static void dispatch(nvm_t *vm)
       print_spaces();
       printf("call\t\t(%s)\n", string);
 #endif
-      unsigned func, i = vm->functions_offset;
+      unsigned func;
       int found = 0, old_ip;
       /* new frame for the call */
       nvm_call_frame *new_frame = vm->mallocer(sizeof(nvm_call_frame));
@@ -712,7 +700,7 @@ static void dispatch(nvm_t *vm)
       /* store the old value of the instruction pointer */
       old_ip = vm->ip;
       /* set the instruction pointer to the body of the function */
-      vm->ip = i + vm->funcs.stack[func].offset;
+      vm->ip = vm->funcs.stack[func].offset;
       /* append the call frame to the call stack */
       /*   the list is NOT empty */
       if (vm->call_stack->head && vm->call_stack->tail){
@@ -767,6 +755,21 @@ static void dispatch(nvm_t *vm)
 #if VERBOSE
       shiftleft();
 #endif
+      break;
+      /* }}} */
+    } case FN_START: {
+      /* {{{ FN_START body */
+      /* skip over the FN_START byte */
+      vm->ip++;
+      /* get the length */
+      byte_one = vm->bytes[vm->ip];
+      /* skip over the length */
+      vm->ip++;
+      /* skip over the name */
+      vm->ip += byte_one;
+      /* skip over the whole body */
+      while (vm->bytes[vm->ip] != FN_END)
+        vm->ip++;
       break;
       /* }}} */
     } default: {

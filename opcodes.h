@@ -48,7 +48,5 @@
 #define FN_END     0x0D
 /* Call a function */
 #define CALL       0x0E
-/* Indicates the beginning of a function definitions */
-#define BEGIN_FN   0xBF
 
 #endif /* OPCODES_H */

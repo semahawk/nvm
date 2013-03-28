@@ -63,7 +63,7 @@ typedef struct {
  */
 typedef struct {
   char *name;
-  /* how far from the BF byte it is */
+  /* where does functions body begins */
   unsigned offset;
 } nvm_func;
 
@@ -163,9 +163,6 @@ typedef struct {
   nvm_stack *stack;
   /* pointer to the first element of the variables stack */
   nvm_vars_stack *vars;
-  /* functions offset (it's not unsigned because I'm using -1 later on for
-     error-like purposes) */
-  int functions_offset;
   /* functions stack */
   nvm_funcs_stack funcs;
   /* call stack, every function call goes here */

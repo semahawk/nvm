@@ -19,12 +19,6 @@
 #define NVM_VERSION_MINOR 0
 #define NVM_VERSION_MAJOR 0
 
-/*
- * Initial size of the stack.
- */
-#define INITIAL_STACK_SIZE 40
-/* Initial size of the variables stack */
-#define INITIAL_VARS_STACK_SIZE 30
 /* Initial size of the functions stack */
 #define INITIAL_FUNCS_STACK_SIZE 30
 
@@ -57,15 +51,25 @@ typedef struct {
 } nvm_func;
 
 /*
+ * NVM type for its Main Stack element.
+ */
+typedef struct _nvm_stack_element {
+  /* value of the element */
+  INT value;
+  /* a pointer to the next element on the stack list */
+  struct _nvm_stack_element *next;
+  /* a pointer to the previous element on the stack list */
+  struct _nvm_stack_element *prev;
+} nvm_stack_element;
+
+/*
  * NVM type for its Main Stack.
  */
 typedef struct {
-  /* the stack itself */
-  INT *stack;
-  /* 'pointer' to the current element */
-  unsigned ptr;
-  /* size of the stack */
-  unsigned size;
+  /* a pointer to the first element in the stack list */
+  nvm_stack_element *head;
+  /* a pointer to the last element in the stack list */
+  nvm_stack_element *tail;
 } nvm_stack;
 
 /*
@@ -139,7 +143,7 @@ typedef struct {
   /* instruction pointer */
   int ip;
   /* The Stack */
-  nvm_stack stack;
+  nvm_stack *stack;
   /* pointer to the first element of the variables stack */
   nvm_vars_stack *vars;
   /* functions offset (it's not unsigned because I'm using -1 later on for

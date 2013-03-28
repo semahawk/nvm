@@ -59,13 +59,28 @@ static unsigned shiftwidth = 1;
 static void load_const(nvm_t *vm, INT value)
 {
   /* {{{ load_const body */
-  /* check for overflow */
-  if (vm->stack.ptr >= vm->stack.size){
-    vm->stack.size += 10;
-    vm->stack.stack = realloc(vm->stack.stack, vm->stack.size);
+  nvm_stack_element *new = vm->mallocer(sizeof(nvm_stack_element));
+  if (!new){
+    fprintf(stderr, "nvm: malloc failed to allocate %lu bytes at line %d\n", sizeof(nvm_stack_element), __LINE__ - 2);
+    exit(1);
   }
+  /* set its value */
+  new->value = value;
 
-  vm->stack.stack[vm->stack.ptr++] = value;
+  /* appending the value to the stack */
+  /*   the stack is not empty */
+  if (vm->stack->head && vm->stack->tail){
+    new->next = vm->stack->head->next;
+    vm->stack->head->next = new;
+    new->prev = vm->stack->head;
+    vm->stack->head = new;
+  /*   the stack is empty */
+  } else {
+    new->next = vm->stack->head;
+    new->prev = vm->stack->tail;
+    vm->stack->head = new;
+    vm->stack->tail = new;
+  }
   /* }}} */
 }
 
@@ -77,28 +92,40 @@ static INT pop(nvm_t *vm)
 {
   /* {{{ pop body */
   /* check if the stack is empty */
-  if (vm->stack.ptr <= 0){
+  if (!vm->stack->head && vm->stack->tail){
     fprintf(stderr, "nvm: error: attempting to pop from an empty stack\n");
     exit(1);
   }
 
-  return vm->stack.stack[--vm->stack.ptr];
+  INT ret = vm->stack->head->value;
+
+  /* there is only one element on the stack */
+  if (vm->stack->head == vm->stack->tail){
+    free(vm->stack->head);
+    vm->stack->head = vm->stack->tail = NULL;
+  /* there is more than one element on the stack */
+  } else {
+    vm->stack->head->prev->next = vm->stack->head->next;
+    nvm_stack_element *tmp = vm->stack->head->prev;
+    free(vm->stack->head);
+    vm->stack->head = tmp;
+  }
+
+  return ret;
   /* }}} */
 }
 
 void nvm_print_stack(nvm_t *vm)
 {
   /* {{{ print_stack body */
-  unsigned i;
-
-  if (vm->stack.ptr <= 0){
+  if (!vm->stack->head && !vm->stack->tail){
     /* the stack is empty */
     printf("the stack is empty\n");
     return;
   }
 
-  for (i = 0; i < vm->stack.ptr; i++){
-    printf("item on stack: %d\n", vm->stack.stack[i]);
+  for (nvm_stack_element *p = vm->stack->tail; p != NULL; p = p->next){
+    printf("item on stack: %d\n", p->value);
   }
   /* }}} */
 }
@@ -172,9 +199,9 @@ nvm_t *nvm_init(const char *filename, void *(*mallocer)(size_t), void (*freeer)(
   vm->bytes            = NULL;
   vm->mallocer         = mallocer;
   vm->freeer           = freeer;
-  vm->stack.stack      = mallocer(INITIAL_STACK_SIZE * sizeof(INT));
-  vm->stack.size       = INITIAL_STACK_SIZE;
-  vm->stack.ptr        = 0;
+  vm->stack            = mallocer(sizeof(nvm_stack));
+  vm->stack->head      = NULL;
+  vm->stack->tail      = NULL;
   vm->vars             = NULL;
   vm->funcs.stack      = mallocer(INITIAL_FUNCS_STACK_SIZE * sizeof(nvm_func));
   vm->funcs.size       = INITIAL_FUNCS_STACK_SIZE;
@@ -211,18 +238,22 @@ void nvm_destroy(nvm_t *vm)
     vm->freeer(p);
   }
   /* and the stack itself */
-  vm->freeer(vm->free_stack);
+  vm->free_stack = NULL;
   /* free everything on the variables stack */
   for (nvm_vars_stack *p = vm->vars; p != NULL; p = p->next){
     vm->freeer(p);
   }
+  /* free the main stack */
+  for (nvm_stack_element *p = vm->stack->head; p != NULL; p = p->prev){
+    vm->freeer(p);
+  }
+  vm->freeer(vm->stack);
+  vm->stack = NULL;
   /* free every other stack */
-  vm->freeer(vm->stack.stack);
   vm->freeer(vm->bytes);
   vm->freeer(vm->funcs.stack);
   vm->freeer(vm->call_stack);
   vm->freeer(vm);
-  vm->stack.stack = NULL;
   vm->bytes = NULL;
   vm->vars = NULL;
   vm->funcs.stack = NULL;
@@ -374,13 +405,16 @@ static void dispatch(nvm_t *vm)
       print_spaces();
       printf("discard\n");
 #endif
-      /* check for underflow */
-      if (vm->stack.ptr <= 0){
-        fprintf(stderr, "nvm: error: try to discard a value on an empty stack\n");
+      /* check if the stack is empty */
+      if (!vm->stack->head && vm->stack->tail){
+        fprintf(stderr, "nvm: error: attempting to discard on an empty stack\n");
         exit(1);
       }
-      /* discard it */
-      vm->stack.stack[vm->stack.ptr--] = 0;
+      /* remove it from the stack */
+      vm->stack->head->prev->next = vm->stack->head->next;
+      nvm_stack_element *tmp = vm->stack->head->prev;
+      free(vm->stack->head);
+      vm->stack->head = tmp;
       break;
       /* }}} */
     } case ROT_TWO: {
@@ -723,7 +757,8 @@ static char *strdup(nvm_t *vm, const char *p)
 /*
  * Helloween, Rhapsody of Fire, Avantasia, Edguy, Iron Savior
  * Running Wild, Michael Schenker Group, Testament
+ * Judas Priest
  *
- * The Office, Family Guy
+ * The Office, Family Guy, Monty Python
  *
  */

@@ -236,8 +236,6 @@ void nvm_destroy(nvm_t *vm)
     vm->freeer(p->ptr);
     vm->freeer(p);
   }
-  /* and the stack itself */
-  vm->free_stack = NULL;
   /* free everything on the variables stack */
   for (nvm_vars_stack *p = vm->vars; p != NULL; p = p->next){
     vm->freeer(p);
@@ -254,14 +252,10 @@ void nvm_destroy(nvm_t *vm)
   }
   /* the main stack itself */
   vm->freeer(vm->stack);
-  vm->stack = NULL;
   /* free every other stack */
   vm->freeer(vm->bytes);
   vm->freeer(vm->call_stack);
   vm->freeer(vm);
-  vm->bytes = NULL;
-  vm->vars = NULL;
-  vm->call_stack = NULL;
   vm = NULL;
   /* }}} */
 }

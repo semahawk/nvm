@@ -34,11 +34,28 @@ typedef unsigned char BYTE;
 typedef int32_t INT;
 
 /*
+ * NVM type for its values type.
+ */
+typedef enum {
+  INTEGER
+} nvm_value_type;
+
+/*
+ * NVM type for its values.
+ */
+typedef struct {
+  /* a pointer to the value */
+  void *ptr;
+  /* type of the value */
+  nvm_value_type type;
+} nvm_value;
+
+/*
  * NVM type for its variables.
  */
 typedef struct {
   char *name;
-  INT value;
+  nvm_value value;
 } nvm_var;
 
 /*
@@ -55,7 +72,7 @@ typedef struct {
  */
 typedef struct _nvm_stack_element {
   /* value of the element */
-  INT value;
+  nvm_value value;
   /* a pointer to the next element on the stack list */
   struct _nvm_stack_element *next;
   /* a pointer to the previous element on the stack list */

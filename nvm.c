@@ -35,10 +35,10 @@
  */
 
 /* {{{ static funtion declarations */
-static void  load_const(nvm_t *virtual_machine, INT value);
-static INT   pop(nvm_t *virtual_machine);
-static void  prerun(nvm_t *virtual_machine);
-static void  dispatch(nvm_t *vm);
+static void load_const(nvm_t *virtual_machine, nvm_value value);
+static nvm_value pop(nvm_t *virtual_machine);
+static void prerun(nvm_t *virtual_machine);
+static void dispatch(nvm_t *vm);
 static char *strdup(nvm_t *virtual_machine, const char *p);
 /* }}} */
 
@@ -56,7 +56,7 @@ static unsigned shiftwidth = 1;
  * name:        load_const
  * description: pushes given <value> to the stack
  */
-static void load_const(nvm_t *vm, INT value)
+static void load_const(nvm_t *vm, nvm_value value)
 {
   /* {{{ load_const body */
   nvm_stack_element *new = vm->mallocer(sizeof(nvm_stack_element));
@@ -64,6 +64,7 @@ static void load_const(nvm_t *vm, INT value)
     fprintf(stderr, "nvm: malloc failed to allocate %lu bytes at line %d\n", sizeof(nvm_stack_element), __LINE__ - 2);
     exit(1);
   }
+
   /* set its value */
   new->value = value;
 
@@ -88,7 +89,7 @@ static void load_const(nvm_t *vm, INT value)
  * name:        pop
  * description: returns the top-most value from the stack, and reduces it's size
  */
-static INT pop(nvm_t *vm)
+static nvm_value pop(nvm_t *vm)
 {
   /* {{{ pop body */
   /* check if the stack is empty */
@@ -97,7 +98,7 @@ static INT pop(nvm_t *vm)
     exit(1);
   }
 
-  INT ret = vm->stack->head->value;
+  nvm_value ret = vm->stack->head->value;
 
   /* there is only one element on the stack */
   if (vm->stack->head == vm->stack->tail){
@@ -125,7 +126,7 @@ void nvm_print_stack(nvm_t *vm)
   }
 
   for (nvm_stack_element *p = vm->stack->tail; p != NULL; p = p->next){
-    printf("item on stack: %d\n", p->value);
+    printf("item on stack: %d\n", *(int *)p->value.ptr);
   }
   /* }}} */
 }
@@ -360,7 +361,7 @@ static void dispatch(nvm_t *vm)
   BYTE byte_one, byte_two, byte_three, byte_four;
   /* this is the final number which is a result of connecting the four mentioned
    * above */
-  INT value;
+  INT integer;
   /* used to retrieve variables names */
   char *string = NULL;
   /* additional counter */
@@ -388,13 +389,22 @@ static void dispatch(nvm_t *vm)
       byte_three = vm->bytes[vm->ip + 3] << 4;
       byte_four  = vm->bytes[vm->ip + 4] << 6;
       /* assemble the final number */
-      value = byte_one ^ byte_two ^ byte_three ^ byte_four;
+      integer = byte_one ^ byte_two ^ byte_three ^ byte_four;
       /* skip over the bytes */
       vm->ip += 4;
 #if VERBOSE
       print_spaces();
-      printf("load_const\t(%d)\n", value);
+      printf("load_const\t(%d)\n", integer);
 #endif
+      nvm_value value;
+      int *new = vm->mallocer(sizeof(INT));
+      if (!new){
+        fprintf(stderr, "nvm: malloc failed to allocate %lu bytes at line %d\n", sizeof(INT), __LINE__ - 2);
+        exit(1);
+      }
+      *new = integer;
+      value.ptr = new;
+      value.type = INTEGER;
       load_const(vm, value);
       break;
       /* }}} */
@@ -425,9 +435,9 @@ static void dispatch(nvm_t *vm)
       printf("rot_two\n");
 #endif
       /* First on Stack */
-      INT FOS = pop(vm);
+      nvm_value FOS = pop(vm);
       /* Second on Stack */
-      INT SOS = pop(vm);
+      nvm_value SOS = pop(vm);
       /* Load'em all */
       load_const(vm, FOS);
       load_const(vm, SOS);
@@ -441,9 +451,9 @@ static void dispatch(nvm_t *vm)
       printf("rot_three\n");
 #endif
       /* Pop'em all */
-      INT FOS = pop(vm);
-      INT SOS = pop(vm);
-      INT TOS = pop(vm);
+      nvm_value FOS = pop(vm);
+      nvm_value SOS = pop(vm);
+      nvm_value TOS = pop(vm);
       /* Load'em all */
       load_const(vm, FOS);
       load_const(vm, TOS);
@@ -550,7 +560,7 @@ static void dispatch(nvm_t *vm)
       printf("dup\n");
 #endif
       /* Pop the top-most value */
-      INT FOS = pop(vm);
+      nvm_value FOS = pop(vm);
       /* Put it twice to the stack */
       load_const(vm, FOS);
       load_const(vm, FOS);
@@ -563,9 +573,19 @@ static void dispatch(nvm_t *vm)
       print_spaces();
       printf("add\n");
 #endif
-      INT FOS = pop(vm);
-      INT SOS = pop(vm);
-      load_const(vm, SOS + FOS);
+      nvm_value FOS = pop(vm);
+      nvm_value SOS = pop(vm);
+      nvm_value res;
+      /* create new INT */
+      INT *new = vm->mallocer(sizeof(INT));
+      if (!new){
+        fprintf(stderr, "nvm: malloc failed to allocate %lu bytes at line %d\n", sizeof(INT), __LINE__ - 2);
+        exit(1);
+      }
+      *new = *(INT *)SOS.ptr + *(INT *)FOS.ptr;
+      res.ptr = new;
+      res.type = INTEGER;
+      load_const(vm, res);
       break;
       /* }}} */
     } case BINARY_SUB: {
@@ -575,9 +595,19 @@ static void dispatch(nvm_t *vm)
       print_spaces();
       printf("sub\n");
 #endif
-      INT FOS = pop(vm);
-      INT SOS = pop(vm);
-      load_const(vm, SOS - FOS);
+      nvm_value FOS = pop(vm);
+      nvm_value SOS = pop(vm);
+      nvm_value res;
+      /* create new INT */
+      INT *new = vm->mallocer(sizeof(INT));
+      if (!new){
+        fprintf(stderr, "nvm: malloc failed to allocate %lu bytes at line %d\n", sizeof(INT), __LINE__ - 2);
+        exit(1);
+      }
+      *new = *(INT *)SOS.ptr - *(INT *)FOS.ptr;
+      res.ptr = new;
+      res.type = INTEGER;
+      load_const(vm, res);
       break;
       /* }}} */
     } case BINARY_MUL: {
@@ -587,9 +617,19 @@ static void dispatch(nvm_t *vm)
       print_spaces();
       printf("mul\n");
 #endif
-      INT FOS = pop(vm);
-      INT SOS = pop(vm);
-      load_const(vm, SOS * FOS);
+      nvm_value FOS = pop(vm);
+      nvm_value SOS = pop(vm);
+      nvm_value res;
+      /* create new INT */
+      INT *new = vm->mallocer(sizeof(INT));
+      if (!new){
+        fprintf(stderr, "nvm: malloc failed to allocate %lu bytes at line %d\n", sizeof(INT), __LINE__ - 2);
+        exit(1);
+      }
+      *new = (*(INT *)SOS.ptr) * (*(INT *)FOS.ptr);
+      res.ptr = new;
+      res.type = INTEGER;
+      load_const(vm, res);
       break;
       /* }}} */
     } case BINARY_DIV: {
@@ -599,9 +639,19 @@ static void dispatch(nvm_t *vm)
       print_spaces();
       printf("div\n");
 #endif
-      INT FOS = pop(vm);
-      INT SOS = pop(vm);
-      load_const(vm, SOS / FOS);
+      nvm_value FOS = pop(vm);
+      nvm_value SOS = pop(vm);
+      nvm_value res;
+      /* create new INT */
+      INT *new = vm->mallocer(sizeof(INT));
+      if (!new){
+        fprintf(stderr, "nvm: malloc failed to allocate %lu bytes at line %d\n", sizeof(INT), __LINE__ - 2);
+        exit(1);
+      }
+      *new = (*(INT *)SOS.ptr) / (*(INT *)FOS.ptr);
+      res.ptr = new;
+      res.type = INTEGER;
+      load_const(vm, res);
       break;
       /* }}} */
     } case CALL: {

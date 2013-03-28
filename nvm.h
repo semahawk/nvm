@@ -102,13 +102,11 @@ typedef struct _nvm_vars_stack {
 /*
  * NVM type for its functions stack.
  */
-typedef struct {
-  /* the stack itself */
-  nvm_func *stack;
-  /* 'pointer' to the current element */
-  unsigned ptr;
-  /* size of the stack */
-  unsigned size;
+typedef struct _nvm_funcs_stack {
+  /* pointer to the function */
+  nvm_func *func;
+  /* pointer to the next element on the stack */
+  struct _nvm_funcs_stack *next;
 } nvm_funcs_stack;
 
 /*
@@ -163,8 +161,8 @@ typedef struct {
   nvm_stack *stack;
   /* pointer to the first element of the variables stack */
   nvm_vars_stack *vars;
-  /* functions stack */
-  nvm_funcs_stack funcs;
+  /* pointer to the first element of the functions stack */
+  nvm_funcs_stack *funcs;
   /* call stack, every function call goes here */
   nvm_call_stack *call_stack;
   /* pointer to the first element of free stack (with things to be free'd) */

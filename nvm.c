@@ -161,10 +161,17 @@ static void prerun(nvm_t *vm)
       name[j] = '\0';
       /* skip over the whole name */
       i += length;
+      /* create the function */
+      nvm_func *new_func = vm->mallocer(sizeof(nvm_func));
+      nvm_funcs_stack *new_elem = vm->mallocer(sizeof(nvm_funcs_stack));
+      /* set its things */
+      new_func->name = strdup(vm, name);
+      new_func->offset = i;
+      new_elem->func = new_func;
       /* append that function to the functions stack */
-      vm->funcs.stack[vm->funcs.ptr].name = strdup(vm, name);
-      vm->funcs.stack[vm->funcs.ptr].offset = i;
-      vm->funcs.ptr++;
+      new_elem->next = vm->funcs;
+      vm->funcs = new_elem;
+      /* release the string */
       vm->freeer(name);
       name = NULL;
     }
@@ -195,9 +202,7 @@ nvm_t *nvm_init(const char *filename, void *(*mallocer)(size_t), void (*freeer)(
   vm->stack->head      = NULL;
   vm->stack->tail      = NULL;
   vm->vars             = NULL;
-  vm->funcs.stack      = mallocer(INITIAL_FUNCS_STACK_SIZE * sizeof(nvm_func));
-  vm->funcs.size       = INITIAL_FUNCS_STACK_SIZE;
-  vm->funcs.ptr        = 0;
+  vm->funcs            = NULL;
   vm->call_stack       = mallocer(sizeof(nvm_call_stack));
   vm->call_stack->head = NULL;
   vm->call_stack->tail = NULL;
@@ -234,6 +239,11 @@ void nvm_destroy(nvm_t *vm)
   for (nvm_vars_stack *p = vm->vars; p != NULL; p = p->next){
     vm->freeer(p);
   }
+  /* free everything on the functions stack */
+  for (nvm_funcs_stack *p = vm->funcs; p != NULL; p = p->next){
+    vm->freeer(p->func);
+    vm->freeer(p);
+  }
   /* free the main stack */
   for (nvm_stack_element *p = vm->stack->head; p != NULL; p = p->prev){
     vm->freeer(p);
@@ -242,12 +252,10 @@ void nvm_destroy(nvm_t *vm)
   vm->stack = NULL;
   /* free every other stack */
   vm->freeer(vm->bytes);
-  vm->freeer(vm->funcs.stack);
   vm->freeer(vm->call_stack);
   vm->freeer(vm);
   vm->bytes = NULL;
   vm->vars = NULL;
-  vm->funcs.stack = NULL;
   vm->call_stack = NULL;
   vm = NULL;
   /* }}} */
@@ -668,7 +676,7 @@ static void dispatch(nvm_t *vm)
       print_spaces();
       printf("call\t\t(%s)\n", string);
 #endif
-      unsigned func;
+      nvm_func *func;
       int found = 0, old_ip;
       /* new frame for the call */
       nvm_call_frame *new_frame = vm->mallocer(sizeof(nvm_call_frame));
@@ -679,9 +687,10 @@ static void dispatch(nvm_t *vm)
       /* store the old variables stack */
       nvm_vars_stack *old_vars_stack = vm->vars;
       /* search for the function */
-      for (func = 0; func < vm->funcs.ptr; func++){
+      for (nvm_funcs_stack *p = vm->funcs; p != NULL; p = p->next){
         /* found it */
-        if (!strcmp(string, vm->funcs.stack[func].name)){
+        if (!strcmp(string, p->func->name)){
+          func = p->func;
           found = 1;
           break;
         }
@@ -700,7 +709,7 @@ static void dispatch(nvm_t *vm)
       /* store the old value of the instruction pointer */
       old_ip = vm->ip;
       /* set the instruction pointer to the body of the function */
-      vm->ip = vm->funcs.stack[func].offset;
+      vm->ip = func->offset;
       /* append the call frame to the call stack */
       /*   the list is NOT empty */
       if (vm->call_stack->head && vm->call_stack->tail){

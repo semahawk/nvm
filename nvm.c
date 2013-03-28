@@ -93,7 +93,7 @@ static nvm_value pop(nvm_t *vm)
 {
   /* {{{ pop body */
   /* check if the stack is empty */
-  if (!vm->stack->head && vm->stack->tail){
+  if (!vm->stack->head && !vm->stack->tail){
     fprintf(stderr, "nvm: error: attempting to pop from an empty stack\n");
     exit(1);
   }

@@ -102,12 +102,14 @@ static nvm_value pop(nvm_t *vm)
 
   /* there is only one element on the stack */
   if (vm->stack->head == vm->stack->tail){
+    free(vm->stack->head->value.ptr);
     free(vm->stack->head);
     vm->stack->head = vm->stack->tail = NULL;
   /* there is more than one element on the stack */
   } else {
     vm->stack->head->prev->next = vm->stack->head->next;
     nvm_stack_element *tmp = vm->stack->head->prev;
+    free(vm->stack->head->value.ptr);
     free(vm->stack->head);
     vm->stack->head = tmp;
   }
@@ -231,6 +233,7 @@ void nvm_destroy(nvm_t *vm)
   /* {{{ nvm_destroy body */
   /* free everything on the free_stack */
   for (nvm_free_stack *p = vm->free_stack; p != NULL; p = p->next){
+    vm->freeer(p->ptr);
     vm->freeer(p);
   }
   /* and the stack itself */
@@ -246,8 +249,10 @@ void nvm_destroy(nvm_t *vm)
   }
   /* free the main stack */
   for (nvm_stack_element *p = vm->stack->head; p != NULL; p = p->prev){
+    vm->freeer(p->value.ptr);
     vm->freeer(p);
   }
+  /* the main stack itself */
   vm->freeer(vm->stack);
   vm->stack = NULL;
   /* free every other stack */
@@ -355,9 +360,6 @@ static void dispatch(nvm_t *vm)
   /* {{{ dispatch body */
   /* an `int` is four bytes, but we're reading one byte at a time */
   BYTE byte_one, byte_two, byte_three, byte_four;
-  /* this is the final number which is a result of connecting the four mentioned
-   * above */
-  INT integer;
   /* used to retrieve variables names */
   char *string = NULL;
   /* additional counter */
@@ -376,6 +378,9 @@ static void dispatch(nvm_t *vm)
       /* }}} */
     } case LOAD_CONST: {
       /* {{{ LOAD_CONST body */
+      /* this is the final number which is a result of connecting the four
+       * bytes that follow the LOAD_CONST byte */
+      INT integer;
 #if VERBOSE
       printf("%04x:", vm->ip);
 #endif
@@ -419,6 +424,7 @@ static void dispatch(nvm_t *vm)
       /* remove it from the stack */
       vm->stack->head->prev->next = vm->stack->head->next;
       nvm_stack_element *tmp = vm->stack->head->prev;
+      free(vm->stack->head->value.ptr);
       free(vm->stack->head);
       vm->stack->head = tmp;
       break;

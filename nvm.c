@@ -385,11 +385,11 @@ static void dispatch(nvm_t *vm)
 #endif
       /* extract the bytes */
       byte_one   = vm->bytes[vm->ip + 1];
-      byte_two   = vm->bytes[vm->ip + 2] << 2;
-      byte_three = vm->bytes[vm->ip + 3] << 4;
-      byte_four  = vm->bytes[vm->ip + 4] << 6;
+      byte_two   = vm->bytes[vm->ip + 2];
+      byte_three = vm->bytes[vm->ip + 3];
+      byte_four  = vm->bytes[vm->ip + 4];
       /* assemble the final number */
-      integer = byte_one ^ byte_two ^ byte_three ^ byte_four;
+      integer = byte_one ^ (byte_two << 8) ^ (byte_three << 16) ^ (byte_four << 24);
       /* skip over the bytes */
       vm->ip += 4;
 #if VERBOSE

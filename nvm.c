@@ -42,15 +42,17 @@ static void dispatch(nvm_t *vm);
 static char *strdup(nvm_t *virtual_machine, const char *p);
 /* }}} */
 
-/* to make the output nicer */
-static unsigned shiftwidth = 1;
-#define shiftright() shiftwidth += 2
-#define shiftleft() shiftwidth -= 2
-#define print_spaces() do {\
-  unsigned counter = 0;\
-  for (; counter < shiftwidth; counter++)\
-    printf(" ");\
-} while (0);
+#if VERBOSE
+  /* to make the output nicer */
+  static unsigned shiftwidth = 1;
+# define shiftright() shiftwidth += 2
+# define shiftleft() shiftwidth -= 2
+# define print_spaces() do {\
+    unsigned counter = 0;\
+    for (; counter < shiftwidth; counter++)\
+      printf(" ");\
+  } while (0);
+#endif
 
 /*
  * name:        load_const
@@ -106,9 +108,6 @@ static nvm_value pop(nvm_t *vm)
     free(tmp->value.ptr);
     free(tmp);
     vm->stack->head = vm->stack->tail = NULL;
-    /*free(vm->stack->head->value.ptr);*/
-    /*free(vm->stack->head);*/
-    /*vm->stack->head = vm->stack->tail = NULL;*/
   /* there is more than one element on the stack */
   } else {
     nvm_stack_element *tmp = vm->stack->head;
@@ -116,11 +115,6 @@ static nvm_value pop(nvm_t *vm)
     vm->stack->head->next = tmp->next;
     free(tmp->value.ptr);
     free(tmp);
-    /*vm->stack->head->prev->next = vm->stack->head->next;*/
-    /*nvm_stack_element *tmp = vm->stack->head->prev;*/
-    /*free(vm->stack->head->value.ptr);*/
-    /*free(vm->stack->head);*/
-    /*vm->stack->head = tmp;*/
   }
 
   return ret;
@@ -212,8 +206,10 @@ nvm_t *nvm_init(const char *filename, void *(*mallocer)(size_t), void (*freeer)(
   vm->stack            = mallocer(sizeof(nvm_stack));
   vm->stack->head      = NULL;
   vm->stack->tail      = NULL;
-  vm->vars             = NULL;
   vm->funcs            = NULL;
+  vm->blocks           = mallocer(sizeof(nvm_blocks_stack));
+  vm->blocks->head     = NULL;
+  vm->blocks->tail     = NULL;
   vm->call_stack       = mallocer(sizeof(nvm_call_stack));
   vm->call_stack->head = NULL;
   vm->call_stack->tail = NULL;
@@ -249,8 +245,9 @@ void nvm_destroy(nvm_t *vm)
   }
   next = NULL;
   /* free everything on the variables stack */
-  for (nvm_vars_stack *p = vm->vars; p != NULL; p = next){
+  for (nvm_vars_stack *p = vm->blocks->head->vars; p != NULL; p = next){
     next = p->next;
+    vm->freeer(p->var);
     vm->freeer(p);
   }
   next = NULL;
@@ -260,11 +257,14 @@ void nvm_destroy(nvm_t *vm)
     vm->freeer(p->func);
     vm->freeer(p);
   }
+  /* free the main block */
+  vm->freeer(vm->blocks->head);
+  /* free the blocks stack */
+  vm->freeer(vm->blocks);
   next = NULL;
   /* free the main stack */
-  for (nvm_stack_element *p = vm->stack->head; p != NULL; p = next){
-    next = p->prev;
-    vm->freeer(p->value.ptr);
+  for (nvm_stack_element *p = vm->stack->tail; p != NULL; p = next){
+    next = p->next;
     vm->freeer(p);
   }
   /* the main stack itself */
@@ -286,7 +286,23 @@ int nvm_blastoff(nvm_t *vm)
   printf("## using NVM version %u.%u.%u ##\n\n", vm->bytes[0], vm->bytes[1], vm->bytes[2]);
 #endif
 
-  /* we start from 3 to skip over the version
+  /* the main program is one big block, so create one now */
+  nvm_block *main_block = vm->mallocer(sizeof(nvm_block));
+  if (!main_block){
+    fprintf(stderr, "nvm: error: failed to allocate %lu bytes at line %d\n", sizeof(nvm_block), __LINE__ - 2);
+    exit(1);
+  }
+  /* initialize the main block */
+  main_block->vars = NULL;
+  /* append the block to the stack */
+  main_block->next = vm->blocks->head;
+  main_block->prev = vm->blocks->tail;
+  vm->blocks->head = main_block;
+  vm->blocks->tail = main_block;
+
+  /* and the bytecode executing itself
+   *
+   * we start from 3 to skip over the version
      we end   at functions offset */
   for (vm->ip = 3; vm->ip < vm->bytes_count; vm->ip++){
     dispatch(vm);
@@ -352,6 +368,10 @@ int nvm_validate(nvm_t *vm)
           i += tmp - 1;
           break;
         case FN_END:
+          break;
+        case ENTER_BLOCK:
+          break;
+        case LEAVE_BLOCK:
           break;
         default:
           fprintf(stderr, "nvm: error: unknown op 0x%02X at position 0x%02X\n", vm->bytes[i], i);
@@ -480,12 +500,10 @@ static void dispatch(nvm_t *vm)
       /* byte next to STORE is that variables name length */
       byte_one = vm->bytes[++vm->ip];
       string = vm->mallocer(byte_one + 1);
-
       if (!string){
-        fprintf(stderr, "malloc: failed to allocate %d bytes.\n", byte_one);
+        fprintf(stderr, "nvm: error: failed to allocate %d bytes.\n", byte_one);
         return;
       }
-
       /* skip over the length byte */
       vm->ip++;
       /* getting the variables name, iterating through the <length> next
@@ -502,15 +520,23 @@ static void dispatch(nvm_t *vm)
 #endif
       /* create variable and its place in the list */
       nvm_vars_stack *new_stack = vm->mallocer(sizeof(nvm_vars_stack));
+      if (!new_stack){
+        fprintf(stderr, "nvm: error: failed to allocate %lu bytes at line %d\n", sizeof(nvm_vars_stack), __LINE__ - 2);
+        exit(1);
+      }
       nvm_var *new_var = vm->mallocer(sizeof(nvm_var));
-      /* set things */
+      if (!new_var){
+        fprintf(stderr, "nvm: error: failed to allocate %lu bytes at line %d\n", sizeof(nvm_var), __LINE__ - 2);
+        exit(1);
+      }
+      /* initialize */
       new_stack->var = new_var;
-      new_var->name = strdup(vm, string);
-      new_var->value = pop(vm);
+      new_stack->var->name = strdup(vm, string);
+      new_stack->var->value = pop(vm);
       /* append the variable to the variables list */
-      new_stack->next = vm->vars;
-      vm->vars = new_stack;
-      /*printf("storing variable '%s' %p into the stack at %p\n", new_var->name, (void*)new_var->name, (void*)vm->vars);*/
+      new_stack->next = vm->blocks->head->vars;
+      vm->blocks->head->vars = new_stack;
+      /* free the string */
       vm->freeer(string);
       string = NULL;
       break;
@@ -545,8 +571,7 @@ static void dispatch(nvm_t *vm)
 #endif
       int found = 0;
       /* iterate through the variables list */
-      for (nvm_vars_stack *p = vm->vars; p != NULL; p = p->next){
-        /*printf("found variable '%s' %p in the stack at %p\n", p->var->name, (void*)p->var->name, (void*)vm->vars);*/
+      for (nvm_vars_stack *p = vm->blocks->head->vars; p != NULL; p = p->next){
         /* we found the variable */
         if (!strcmp(p->var->name, string)){
           /* push its value onto the stack */
@@ -701,7 +726,7 @@ static void dispatch(nvm_t *vm)
         exit(1);
       }
       /* store the old variables stack */
-      nvm_vars_stack *old_vars_stack = vm->vars;
+      nvm_vars_stack *old_vars_stack = vm->blocks->head->vars;
       /* search for the function */
       for (nvm_funcs_stack *p = vm->funcs; p != NULL; p = p->next){
         /* found it */
@@ -721,7 +746,7 @@ static void dispatch(nvm_t *vm)
       new_frame->fn_name = strdup(vm, string);
       new_frame->vars = NULL;
       /* set the variables stack to the newly created one */
-      vm->vars = new_frame->vars;
+      vm->blocks->head->vars = new_frame->vars;
       /* store the old value of the instruction pointer */
       old_ip = vm->ip;
       /* set the instruction pointer to the body of the function */
@@ -753,7 +778,7 @@ static void dispatch(nvm_t *vm)
       /* XXX, why do I have to decrement old_ip by two, to make it work? */
       vm->ip = (old_ip -= 2);
       /* restore the old variables stack */
-      vm->vars = old_vars_stack;
+      vm->blocks->head->vars = old_vars_stack;
       /* free the functions call stack */
       for (nvm_vars_stack *p = new_frame->vars; p != NULL; p = p->next){
         vm->freeer(p->var);
@@ -797,6 +822,64 @@ static void dispatch(nvm_t *vm)
         vm->ip++;
       break;
       /* }}} */
+    } case ENTER_BLOCK: {
+      /* {{{ ENTER_BLOCK body */
+      nvm_block *new = vm->mallocer(sizeof(nvm_block));
+      if (!new){
+        fprintf(stderr, "nvm: error: failed to allocate %lu bytes at line %d\n", sizeof(nvm_block), __LINE__ - 2);
+        exit(1);
+      }
+      /* initialize the block */
+      new->vars = NULL;
+      /* the stack is empty */
+      if (!vm->blocks->head && !vm->blocks->tail){
+        new->next = vm->blocks->head;
+        new->prev = vm->blocks->tail;
+        vm->blocks->head = new;
+        vm->blocks->tail = new;
+      /* the stack is not empty */
+      } else {
+        new->next = vm->blocks->head->next;
+        vm->blocks->head->next = new;
+        new->prev = vm->blocks->head;
+        vm->blocks->head = new;
+      }
+#if VERBOSE
+      shiftright();
+#endif
+      break;
+      /* }}} */
+    } case LEAVE_BLOCK: {
+      /* {{{ LEAVE_BLOCK body */
+      /* there are no blocks on the stack */
+      if (!vm->blocks->head && !vm->blocks->tail){
+        fprintf(stderr, "nvm: error: trying to exit from a block, while not entering into one\n");
+        exit(1);
+      }
+      /* fetch the last block on the blocks stack */
+      nvm_block *last_block = vm->blocks->head;
+      /* remove the variables that were hold in that block */
+      for (nvm_vars_stack *p = vm->blocks->head->vars; p != NULL; p = p->next){
+        vm->freeer(p->var);
+        vm->freeer(p);
+      }
+      /* restore the previous variables stack to be in use */
+      vm->blocks->head->vars = last_block->prev->vars;
+      /* there is only one element on the stack */
+      if (vm->blocks->head == vm->blocks->tail){
+        free(last_block);
+        vm->blocks->head = vm->blocks->tail = NULL;
+      /* there is more than one element on the stack */
+      } else {
+        vm->blocks->head = last_block->prev;
+        vm->blocks->head->next = last_block->next;
+        free(last_block);
+      }
+#if VERBOSE
+      shiftleft();
+#endif
+      break;
+      /* }}} */
     } default: {
       /* {{{ unknown opcode */
       printf("nvm: error: unknown op 0x%02X at position 0x%02X\n", vm->bytes[vm->ip], vm->ip);
@@ -835,7 +918,7 @@ static char *strdup(nvm_t *vm, const char *p)
 /*
  * Helloween, Rhapsody of Fire, Avantasia, Edguy, Iron Savior
  * Running Wild, Michael Schenker Group, Testament
- * Judas Priest
+ * Judas Priest, Stratovarius
  *
  * The Office, Family Guy, Monty Python
  *

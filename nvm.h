@@ -62,6 +62,7 @@ typedef struct {
  * NVM type for its functions.
  */
 typedef struct {
+  /* name of the function */
   char *name;
   /* where does functions body begins */
   unsigned offset;
@@ -142,6 +143,28 @@ typedef struct _nvm_free_stack {
 } nvm_free_stack;
 
 /*
+ * NVM type for its block.
+ */
+typedef struct _nvm_block {
+  /* stack of variables for that block */
+  nvm_vars_stack *vars;
+  /* pointer to the next element on the stack */
+  struct _nvm_block *next;
+  /* pointer to the previous element on the stack */
+  struct _nvm_block *prev;
+} nvm_block;
+
+/*
+ * NVM type for its stack holding blocks.
+ */
+typedef struct {
+  /* a pointer to the first block on the stack */
+  nvm_block *head;
+  /* a pointer to the last block on the stack */
+  nvm_block *tail;
+} nvm_blocks_stack;
+
+/*
  * The main type for NVM.
  */
 typedef struct {
@@ -163,6 +186,8 @@ typedef struct {
   nvm_vars_stack *vars;
   /* pointer to the first element of the functions stack */
   nvm_funcs_stack *funcs;
+  /* pointer to the blocks stack */
+  nvm_blocks_stack *blocks;
   /* call stack, every function call goes here */
   nvm_call_stack *call_stack;
   /* pointer to the first element of free stack (with things to be free'd) */

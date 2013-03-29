@@ -102,16 +102,25 @@ static nvm_value pop(nvm_t *vm)
 
   /* there is only one element on the stack */
   if (vm->stack->head == vm->stack->tail){
-    free(vm->stack->head->value.ptr);
-    free(vm->stack->head);
+    nvm_stack_element *tmp = vm->stack->head;
+    free(tmp->value.ptr);
+    free(tmp);
     vm->stack->head = vm->stack->tail = NULL;
+    /*free(vm->stack->head->value.ptr);*/
+    /*free(vm->stack->head);*/
+    /*vm->stack->head = vm->stack->tail = NULL;*/
   /* there is more than one element on the stack */
   } else {
-    vm->stack->head->prev->next = vm->stack->head->next;
-    nvm_stack_element *tmp = vm->stack->head->prev;
-    free(vm->stack->head->value.ptr);
-    free(vm->stack->head);
-    vm->stack->head = tmp;
+    nvm_stack_element *tmp = vm->stack->head;
+    vm->stack->head = tmp->prev;
+    vm->stack->head->next = tmp->next;
+    free(tmp->value.ptr);
+    free(tmp);
+    /*vm->stack->head->prev->next = vm->stack->head->next;*/
+    /*nvm_stack_element *tmp = vm->stack->head->prev;*/
+    /*free(vm->stack->head->value.ptr);*/
+    /*free(vm->stack->head);*/
+    /*vm->stack->head = tmp;*/
   }
 
   return ret;
@@ -231,22 +240,30 @@ nvm_t *nvm_init(const char *filename, void *(*mallocer)(size_t), void (*freeer)(
 void nvm_destroy(nvm_t *vm)
 {
   /* {{{ nvm_destroy body */
+  void *next = NULL;
   /* free everything on the free_stack */
-  for (nvm_free_stack *p = vm->free_stack; p != NULL; p = p->next){
+  for (nvm_free_stack *p = vm->free_stack; p != NULL; p = next){
+    next = p->next;
     vm->freeer(p->ptr);
     vm->freeer(p);
   }
+  next = NULL;
   /* free everything on the variables stack */
-  for (nvm_vars_stack *p = vm->vars; p != NULL; p = p->next){
+  for (nvm_vars_stack *p = vm->vars; p != NULL; p = next){
+    next = p->next;
     vm->freeer(p);
   }
+  next = NULL;
   /* free everything on the functions stack */
-  for (nvm_funcs_stack *p = vm->funcs; p != NULL; p = p->next){
+  for (nvm_funcs_stack *p = vm->funcs; p != NULL; p = next){
+    next = p->next;
     vm->freeer(p->func);
     vm->freeer(p);
   }
+  next = NULL;
   /* free the main stack */
-  for (nvm_stack_element *p = vm->stack->head; p != NULL; p = p->prev){
+  for (nvm_stack_element *p = vm->stack->head; p != NULL; p = next){
+    next = p->prev;
     vm->freeer(p->value.ptr);
     vm->freeer(p);
   }
@@ -256,7 +273,6 @@ void nvm_destroy(nvm_t *vm)
   vm->freeer(vm->bytes);
   vm->freeer(vm->call_stack);
   vm->freeer(vm);
-  vm = NULL;
   /* }}} */
 }
 
